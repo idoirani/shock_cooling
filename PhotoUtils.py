@@ -9,7 +9,6 @@ import os
 import glob 
 from astropy.time import Time
 from astropy.io import fits
-import specutils as sp
 import astropy.wcs as fitswcs
 import astropy.units as u
 from scipy import interpolate
@@ -29,67 +28,6 @@ cAA = constants.c.value*1e10
 pc=constants.pc.cgs.value
 Mpc=1e6*pc
 jy=1e-23 #erg/s/cm^2/Hz
-try:
-    vega_spec=np.genfromtxt('/home/idoi/Dropbox/Utils/alpha_lyr_stis_004.ascii')
-except:
-    vega_spec=np.genfromtxt('C:\\Users\\idoir\\Dropbox\\Utils\\alpha_lyr_stis_004.ascii')
-
-
-
-path_filters = '/home/idoi/Dropbox/Utils/Filters/'
-
-
-path_filters = '/home/idoi/Dropbox/Utils/Filters/'
-filter_transmission={
-                     'ZTF_g':'P48_g.txt',    
-                     'ZTF_r':'P48_r.txt',    
-                     'ZTF_i':'ZTF_transmission_i_from_twiki.ascii',                        
-                     'u_P60':'SDSS_u.txt',
-                     'g_P60':'SDSS_g.txt',
-                     'r_P60':'SDSS_r.txt',
-                     'i_P60':'SDSS_i.txt',
-                     'LT_u':'LT_u.txt',  
-                     'LT_g':'LT_g.txt',  
-                     'LT_r':'LT_r.txt',
-                     'LT_i':'LT_i.txt',   
-                     'LT_z':'LT_z.txt',
-                     'LCO_u':'LCO_AA_SDSS.up.txt',
-                     'LCO_g':'LCO_AA_SDSS.gp.txt',
-                     'LCO_r':'LCO_AA_SDSS.rp.txt',
-                     'LCO_i':'LCO_AA_SDSS.ip.txt',
-                     'LCO_r':'LCO_AA_SDSS.rp.txt',
-                     'LCO_i':'LCO_AA_SDSS.ip.txt',
-                     'LCO_V':'LasCumbres_LasCumbres.Bessel_V.dat',
-                     'LCO_B':'LasCumbres_LasCumbres.Bessel_B.dat',
-                     'UVM2'   :'Swift_UVM2.rtf',
-                     'UVW1'   :'Swift_UVW1.rtf',  
-                     'UVW2'   :'Swift_UVW2.rtf', 
-                     'u_swift':'Swift_u.rtf',
-                     'v_swift':'Swift_V.rtf',  
-                     'b_swift':'Swift_B.rtf',
-                     'NOT_u':'NOT_u.txt',
-                     'NOT_g':'NOT_g.txt',
-                     'NOT_r':'NOT_r.txt',
-                     'NOT_i':'NOT_i.txt',
-                     'NOT_z':'NOT_z.txt',
-                     'KAIT_B':   'B_kait4_shifted.txt',
-                     'KAIT_V':   'V_kait4_shifted.txt',
-                     'KAIT_R':   'R_kait4_shifted.txt',
-                     'KAIT_I':   'I_kait4_shifted.txt',
-                     'KAIT_CLEAR':   'e2v_QE_midband.csv',
-
-                     'Ni_B':   'B_Nickel2.txt',
-                     'Ni_V':   'V_Nickel2.txt',
-                     'Ni_R':   'R_Nickel2.txt',
-                     'Ni_I':   'I_Nickel2.txt',
-                     'Ni_CLEAR':   'e2v_QE_midband.csv',
-                     #'KAIT_CLEAR':'',
-                     'MMIRS_J':'MMT_MMIRS.J.dat',
-                     'MMIRS_H':'MMT_MMIRS.H.dat',
-                     'MMIRS_Ks':'MMT_MMIRS.Ks.dat'}
-
-filter_transmission = {x:path_filters + filter_transmission[x] for x in filter_transmission.keys()}
-filter_transmission = {x:ascii.read(filter_transmission[x]) for x in filter_transmission.keys()}
 
 
 
@@ -899,23 +837,6 @@ def bin_lc_to_interval2(t,m,delta,m_err='None',ctype='med'):
         m_err_bin  = fluxerr2magerr(f_err_bin,f_bin)
         m_bin  = -2.5*np.log10(f_bin)
         return t_bin,m_bin,m_err_bin
-
-def read1dfits(filename,ext=0,quant = u.erg / u.cm**2 / u.s / u.AA):
-    HDU = fits.open(filename)
-    flux = HDU[0].data[0]
-    head = HDU[ext].header 
-    mywcs=fitswcs.WCS(head)
-    sp1 = sp.Spectrum1D(flux=flux*quant,wcs=mywcs)
-    flux = sp1.flux
-    wave = sp1.spectral_axis
-    flux = np.array(flux).flatten()
-    wave = np.array(wave).flatten()
-    tab = table.Table() 
-    tab['lambda (Ang)'] = wave
-    tab['flux (cgs/Ang)'] = flux
-    return tab, head
-
-
 
 
 def cumulative(variable):

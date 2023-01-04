@@ -27,7 +27,7 @@ parser.add_argument('--out_path', type=str, help='out path')
 parser.add_argument('--plots', type=str, help='plot lc and sed? answer 0 or 1')
 parser.add_argument('--z',default=-1, type=float, help='redshift')
 parser.add_argument('--d_mpc',default=0, type=float, help='distance in MPC')
-parser.add_argument('--t0',default=-1, type=float, help='reference time')
+parser.add_argument('--t0',default=np.nan, type=float, help='reference time')
 parser.add_argument('--Ebv_MW',default=0, type=float, help='MW extinction E(B-V)')
 parser.add_argument('--EBV_host',default=0, type=float, help='Host extinction E(B-V)')
 parser.add_argument('--LAW',default='MW', type=str, help='Host extinction LAW: MW/SMC/LMC/Cal00')
@@ -67,25 +67,19 @@ write = write=='True'
 
 plot_lc=plots
 plot_sed=plots
-#Data_path ='/home/idoi/Dropbox/Objects/ZTF20ablygyy/ZTF20ablygyy_lc_format.ascii'
-#Dates_path='/home/idoi/Dropbox/Objects/ZTF20ablygyy/ZTF20ablygyy_lc_dates.ascii'
-meta_path = '/home/idoi/Dropbox/Objects/ZTF infant sample/metadata_310722.ascii'
-sys.path.append('/home/idoi/Dropbox/Objects/ZTF infant sample/analysis') 
 
 
-meta = ascii.read(meta_path)
-meta['dm'] = 5*np.log10(meta['distance'])+25  
 if z == -1:
-	z = meta['redshift'][meta['name']==sn][0]
+	raise ValueError('z has to be a number larger than 0')
 
 
-if t0 ==-1:
-	first_time= meta['t0'][meta['name']==sn]
+if np.isnan(t0):
+	raise ValueError('Please give a reference time t0')
 else: 
 	first_time = t0
 
 if d_mpc == 0:
-	d_mpc=meta['distance'][meta['name']==sn][0]
+	raise ValueError('d_mpc has to be a number larger than 0')
 
 cosmo_distance_cm=d_mpc*1e6*constants.pc.to('cm').value
 d=cosmo_distance_cm
