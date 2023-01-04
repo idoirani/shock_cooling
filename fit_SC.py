@@ -117,7 +117,7 @@ elif mode == 'replot':
 	plot = True
 
 
-if path_out[-1]~='/':
+if path_out[-1]!='/':
 	path_out = path_out+'/'
 
 if not os.path.exists(path_out):
@@ -174,7 +174,7 @@ if write:
 		u,d,v = np.linalg.svd(resids_cov)
 		A = u[:,:3] @ np.diag(d[:3]) @ v[:3,:]   
 		if (np.linalg.eig(A+cov_obs)[0]<0).any():
-			import ipdb; ipdb.set_trace
+			A = u[:,:2] @ np.diag(d[:2]) @ v[:2,:]   
 		cov_est = A+cov_obs
 		inv_cov = np.linalg.inv(cov_est)
 	else: 
@@ -196,17 +196,16 @@ if write:
 
 	cmd = 'python "{8}/fit_bb_extinction.py" --data "{2}" --out_path "{3}blackbodies/{0}_BB_from_SC.txt" --write True --plots {9} --name {0} --EBV_host {1} --z {4} --d_mpc {5} --dates "{6}" --t0 {7: .2f} --modify_BB_MSW {10}'.format(sn,obj.ebv,path_data,path_out,z,d_mpc,path_dates_sn,t0_init+t0,path_package,False, modify_BB_MSW)
 	os.system(cmd)
-	try:
-		Temps = ascii.read(path_out+'blackbodies/{0}_BB_from_SC.txt'.format(sn))
-		results[sn] = [best,obj,Temps,dresults]
-		exist = True
-		if write:
-			#write    
-			ob = results[sn]
-			filehandler = open(path_out + '{0}_fit_bb_obj.pkl'.format(sn),'wb') 
-			pickle.dump(ob,filehandler)
-	except: 
-		import ipdb; ipdb.set_trace()
+	
+	Temps = ascii.read(path_out+'blackbodies/{0}_BB_from_SC.txt'.format(sn))
+	results[sn] = [best,obj,Temps,dresults]
+	exist = True
+	if write:
+		#write    
+		ob = results[sn]
+		filehandler = open(path_out + '{0}_fit_bb_obj.pkl'.format(sn),'wb') 
+		pickle.dump(ob,filehandler)
+
 elif read:
 	#read
 	fname = path_out + '{0}_fit_bb_obj.pkl'.format(sn)
