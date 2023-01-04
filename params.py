@@ -3,12 +3,12 @@ import numpy as np
 
 
 
-path_mat =    '/home/idoi/Dropbox/Objects/ZTF infant sample/Multigroup simulations/Full_batch_12_2022_Z_1_01.mat'
-path_key  =   '/home/idoi/Dropbox/Objects/ZTF infant sample/Multigroup simulations/Full_batch_12_2022_Z_1_01_key.mat'
-path_data =   '/home/idoi/Dropbox/Objects/ZTF infant sample/merged_photometry/extinction_corrected/ZTF20aaynrrh_detections_ebv_corr.ascii'
-path_out =     '/home/idoi/Dropbox/Objects/ZTF infant sample/test/ZTF20aaynrrh/'
-path_package = '/home/idoi/Dropbox/Objects/ZTF infant sample/analysis/Shock_cooling_Suite/'
-path_dates_sn = '/home/idoi/Dropbox/Objects/ZTF infant sample/test/ZTF20aaynrrh/ZTF20aaynrrh_dates.txt'
+path_mat =      './Full_batch_12_2022_Z_1_01.mat'
+path_key  =     './Full_batch_12_2022_Z_1_01_key.mat'
+path_data =     './test_files/ZTF20aaynrrh_detections_ebv_corr.ascii'
+path_dates_sn = './test_files/ZTF20aaynrrh_dates.txt'
+path_out =      './output/'
+path_package =  './'
 
 max_t = 10
 min_t = 0

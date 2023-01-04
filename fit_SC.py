@@ -117,7 +117,8 @@ elif mode == 'replot':
 	plot = True
 
 
-
+if path_out[-1]~='/':
+	path_out = path_out+'/'
 
 if not os.path.exists(path_out):
 	os.mkdir(path_out)
