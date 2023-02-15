@@ -1067,7 +1067,7 @@ def fit_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 	# Resample weighted samples.
 	samples_equal = dyfunc.resample_equal(samples, weights)
 	# Generate a new set of results with statistical+sampling uncertainties.
-	results_sim = dyfunc.simulate_run(dresults)
+	#results_sim = dyfunc.simulate_run(dresults)
 
 	return mean, quantiles,dresults
 	
@@ -1191,11 +1191,11 @@ def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 	quantiles = [dyfunc.quantile(samps, [0.1, 0.9], weights=weights)
 				 for samps in samples.T]
 	# Compute weighted mean and covariance.
-	mean, cov = dyfunc.mean_and_cov(samples, weights)
+	mean, _ = dyfunc.mean_and_cov(samples, weights)
 	# Resample weighted samples.
-	samples_equal = dyfunc.resample_equal(samples, weights)
+	#samples_equal = dyfunc.resample_equal(samples, weights)
 	# Generate a new set of results with statistical+sampling uncertainties.
-	results_sim = dyfunc.simulate_run(dresults)
+	#results_sim = dyfunc.simulate_run(dresults)
 
 	return mean, quantiles,dresults
 
@@ -1291,7 +1291,7 @@ def plot_resid_covariance(dat,obj,cov, fig = 'create', ax = None,figsize = (6,4)
 	plt.ylabel('Fractional standard deviation',fontsize = 14)
 	plt.legend(fontsize = 14)
 
-	return rot_resid, fig, ax
+	return rot_resid, s, fig, ax
 
 
 class model_piro_cooling(object):

@@ -9,6 +9,7 @@ path_data =     './test_files/ZTF20aaynrrh_detections_ebv_corr.ascii'
 path_dates_sn = './test_files/ZTF20aaynrrh_dates.txt'
 path_out =      './output/'
 path_package =  './'
+path_filters = './Filters/'
 
 max_t = 10
 min_t = 0
@@ -38,7 +39,7 @@ Rv_fit = False
 modify_BB_MSW = True
 
 
-path_filters = '/home/idoi/Dropbox/Utils/Filters/'
+
 
 
 FILTERS =   np.array(['ZTF_g'  
