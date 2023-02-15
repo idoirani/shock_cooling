@@ -9,7 +9,6 @@ import sys
 #from PhotoUtils import *
 from extinction import ccm89,calzetti00, apply
 from scipy.optimize  import minimize,curve_fit
-
 import tqdm
 from numba import jit, njit 
 import dynesty
@@ -19,16 +18,15 @@ from params import *
 sys.path.insert(1,path_package+'/barak')
 from extinction_barak import SMC_Gordon03,LMC_Gordon03
 plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "sans-serif",
-    "font.sans-serif": ["Helvetica"]})
+	"text.usetex": True,
+	"font.family": "sans-serif",
+	"font.sans-serif": ["Helvetica"]})
 # for Palatino and other serif fonts use:
 plt.rcParams.update({
-    "text.usetex": True,
-    "font.family": "serif",
-    "font.serif": ["Palatino"],
+	"text.usetex": True,
+	"font.family": "serif",
+	"font.serif": ["Palatino"],
 })
-
 ## priors 
 rad_high=3e15
 rad_low=4e12
@@ -450,11 +448,13 @@ def MW_F(tday,lam,R13,v85,fM,k34,Menv,d = 3.08e26, EBV=0,EBV_mw=0, R_v=3.1,z=0,L
 	flux_corr = apply_extinction(lam,f_lam,EBV=EBV,EBV_mw=EBV_mw,R_v=R_v,z=z,LAW=LAW)
 	return flux_corr
 
-def MW_F_red(tday,lam,R13,v85,fM,k34,Menv,d = 3.08e26, EBV=0,EBV_mw=0, R_v=3.1,z=0,LAW='MW'):
-	f_lam = np.array(list(map(lambda l: f_nu_reduced(tday,l,R13,v85,fM,k34,Menv,d = d)[0], lam )))
 
+def MW_F_red(tday,lam,R13,v85,fM,k34,Menv,d = 3.08e26, EBV=0,EBV_mw=0, R_v=3.1,z=0,LAW='MW'):
+	#f_lam = np.array(list(map(lambda l: f_nu_reduced(tday,l,R13,v85,fM,k34,Menv,d = d)[0], lam )))
+	f_lam = f_nu_reduced(tday,lam,R13,v85,fM,k34,Menv,d = d)[0]
 	flux_corr = apply_extinction(lam,f_lam,EBV=EBV,EBV_mw=EBV_mw,R_v=R_v,z=z,LAW=LAW)
 	return flux_corr
+
 
 def MW_F_UV_sup(tday,lam,R13,v85,fM,k34,Menv,d = 3.08e26, EBV=0,EBV_mw=0, R_v=3.1,z=0,LAW='MW'):
 	f_lam = np.array(list(map(lambda l: f_nu_UV_sup(tday,l,R13,v85,fM,k34,Menv,d = d)[0], lam )))
@@ -501,12 +501,11 @@ def generate_MW_mag_single(time,R13,v85,fM,k34,Menv,filt,z=0, d = 3.08e26, Rv=3.
 	
 	v = H0*d/3.08e24
 	z = v/300000
-	Trans  = filter_transmission[filt]
-	lam  = np.linspace(np.min(Trans['col1']),np.max(Trans['col1']),20)
+	Trans  = filter_transmission_fast[filt]
+	Trans_l = Trans[:,0]
+	Trans_T = Trans[:,1]
+	lam  = np.linspace(np.min(Trans_l),np.max(Trans_l),20)
 	m_array = {}
-	Trans_l = Trans["col1"].astype(float)
-	Trans_T = Trans["col2"].astype(float)
-
 	mm = []
 	for t in time:
 		flux = func(t,lam,R13,v85,fM,k34,Menv,d = d, EBV=EBV,EBV_mw=EBV_MW, R_v=Rv,z=z,LAW=LAW)
@@ -514,6 +513,7 @@ def generate_MW_mag_single(time,R13,v85,fM,k34,Menv,filt,z=0, d = 3.08e26, Rv=3.
 		mm.append(m)
 	m_array[filt] = np.array(mm)    	
 	return m_array
+
 
 @njit
 def f_nu2f_lam(f_nu,lam_AA):
@@ -638,44 +638,45 @@ class model_freq_dep_SC(object):
 		t_down  = self.t_down 
 		t_up    = self.t_up   
 		cond_valid = (dat['t_rest']>t_down)&(dat['t_rest']<t_up)
+		args_valid = np.argwhere(cond_valid).flatten()
 		if np.sum(cond_valid) == 0:
 			chi_tot = 0
 			logprob = -np.inf
 			dof = -1
 			return logprob, chi_tot, dof
-		inds = [np.min(np.argwhere(cond_valid)),np.max(np.argwhere(cond_valid))+1]
+		inds = [np.min(args_valid),np.max(args_valid)+1]
 
-		dat = dat[cond_valid]
-
+		dat = dat[args_valid]
+		#_,dat_res = compute_resid(dat.copy(),self)
 		dof = len(dat)
-
 		filt_list = np.unique(dat['filter'])
 		delta = np.zeros(dof,)
-
 		for filt in filt_list:
 			cond_filt = dat['filter']==filt
-			dat_filt = dat[cond_filt]
+			args_filt = np.argwhere(cond_filt).flatten()
+			dat_filt = dat[args_filt]
 			time = dat_filt['t_rest']-t0
-			mag = dat['absmag'][cond_filt]
+			mag = dat['absmag'][args_filt]
 			mags =   self.mags_single(time,filt=filt)
 			res = np.array(mag - mags[filt])
 			delta[cond_filt] = res
-
+		#cov = cov[inds[0]:inds[1],inds[0]:inds[1]]
+		#inv_cov = np.linalg.inv(cov)
 		inv_cov = inv_cov[inds[0]:inds[1],inds[0]:inds[1]]
-
+		#prod = np.dot(delta,inv_cov)
+		#chi_tot = np.dot(prod,delta)
 		chi_tot = delta @ inv_cov @ delta
 		dof = dof - nparams
-		
 		rchi2 = chi_tot/dof
-			
-
 		if chi_tot == 0:
 			logprob = -np.inf
 		elif dof <= 0:
 			logprob = -np.inf
 		else:
-
+			#prob = scipy.stats.chi2.pdf(chi_tot, dof)
+			#prob = float(prob)
 			logprob = log_chi_sq_pdf(chi_tot, dof)
+		#logprob = np.log(prob)
 		return logprob, chi_tot, dof
 
 	def likelihood_bb(self,dat_bb,sys_err = 0.05,nparams = 10):
@@ -820,8 +821,25 @@ def construct_covariance_MG_v2(data,path_mat,path_key,model_func = model_freq_de
    
 	return resids_cov,resids,tmax
 
-
-
+def generate_full_covariance(data,path_mat,path_key,sys_err = 0.1,covar = True):
+	if covar:
+		resids_cov,resids,t_max = construct_covariance_MG_v2(data,path_mat,path_key,model_func = model_freq_dep_SC,valid_inds=key_dic['ind_valid'])
+		#resids_cov[np.isnan(resids_cov)] = 0   
+		cov_obs = np.diagflat(np.array(data[(data['t_rest']<=t_max)]['AB_MAG_ERR'])**2+ sys_err**2)   
+		#cov = resids_cov + cov_obs  
+		#data_resid = data_resid['resid'][data_resid['t_rest']<tmax]
+		#cov[np.isnan(cov)] = 0
+		u,d,v = np.linalg.svd(resids_cov)
+		A = u[:,:3] @ np.diag(d[:3]) @ v[:3,:]   
+		if (np.linalg.eig(A+cov_obs)[0]<0).any():
+			import ipdb; ipdb.set_trace
+		cov_est = A+cov_obs
+		inv_cov = np.linalg.inv(cov_est)
+	else: 
+		cov_obs = np.diagflat(np.array(data[data['t_rest']<=t_max]['AB_MAG_ERR'])**2+ sys_err**2)   
+		cov_est = cov_obs  
+		inv_cov = np.linalg.inv(cov_obs)
+	return inv_cov,cov_est
 
 def construct_sim(data,mat, d = 3.0856e+19):
 
@@ -1052,7 +1070,7 @@ def fit_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 	results_sim = dyfunc.simulate_run(dresults)
 
 	return mean, quantiles,dresults
-
+	
 def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):  
 	inputs={'priors':[np.array([0.05,5]),
 					  np.array([0.3,5]),
@@ -1094,10 +1112,16 @@ def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 	else:
 		priors = priors[0:5]
 	if inv_cov =='':
-		 inv_cov=  np.diagflat(1/(np.array(data[data['t_rest']<=t_max]['AB_MAG_ERR'])**2+ sys_err**2))
+		 inv_cov=  np.diagflat(1/(np.array(data['AB_MAG_ERR'])**2+ sys_err**2))
+
+
+	data = data['t_rest','filter','absmag','AB_MAG_ERR']
+
+
 	def prior_transform(u,priors = priors):
 		x=uniform_prior_transform(u,priors =priors )
 		return x
+
 	def myloglike(x):
 		R13,v85,fM,Menv,t0,ebv = x   
 		t07 = 6.86*R13**(0.56)*v85**(0.16)*k34**(-0.61)*fM**(-0.06) + t0
@@ -1213,6 +1237,61 @@ def plot_resid(dat,obj, c_band, lab_band, sigma = False):
 		plt.ylabel('M - model ($\sigma$)')
 	plt.legend()
 	pass
+
+
+def plot_resid_covariance(dat,obj,cov, fig = 'create', ax = None,figsize = (6,4), imax = -1):
+	#use compute resid to get the resid vector
+	resid,Data = compute_resid(dat.copy(),obj)
+	#compute the validity time of the model given obj
+	t_down = obj.t_down
+	t_up = obj.t_up
+	if np.shape(cov)[0]>len(Data):
+		Data = Data[0:np.shape(cov)[0]]
+	else:
+		cov = cov[0:len(Data),0:len(Data)]
+	cond_valid = (dat['t_rest']>t_down)&(dat['t_rest']<t_up)
+	args_valid = np.argwhere(cond_valid).flatten()
+	inds = [np.min(args_valid),np.max(args_valid)+1]
+	cov = cov[inds[0]:inds[1],inds[0]:inds[1]]
+	Data = Data[cond_valid]
+
+
+	 #np.sqrt(np.trace(AA @ AA.T)) 
+	# compute the SVD of the covariance matrix
+	u, s, vh = np.linalg.svd(cov)
+
+	N = np.shape(cov)[0]
+	fractional_std = np.zeros((N,))
+	for i in range(N):
+		AA = u[:,:i] @ np.diag(s[:i]) @ vh[:i,:]  
+		fractional_std[i] = np.std(AA)/np.std(cov)
+
+
+	#use the matriced  to rotate the resid vector to the SVD basis
+	rot_resid = np.dot(Data['resid'],vh)
+	A = u[:,:3] @ np.diag(d[:3]) @ v[:3,:] 
+	#compute the error in the rotated basis
+	rot_resid_err = np.sqrt(np.dot(Data['AB_MAG_ERR']**2,np.abs(vh)))
+	if fig == 'create':
+		fig = plt.figure(figsize=figsize)
+		ax = plt.axes()
+	ax.errorbar(np.arange(len(s[:imax])),rot_resid[:imax]/np.sqrt(s[:imax]),rot_resid_err[:imax]/np.sqrt(s[:imax]),label = 'Residuals in diagonal basis',ls = '', marker = 'o', color = 'b')
+	ax.legend(fontsize = 14)
+	ax.set_xlabel('SVD component',fontsize = 14)
+	ax.set_ylabel('Residuals (sigma)',fontsize = 14)
+	xlim= ax.get_xlim()
+
+	ax.fill_between(np.arange(len(s[:imax])),-1,1, color = 'b', alpha = 0.2, label = 'Expected noise from the Covariance matrix')
+	ax.plot(xlim,[0,0],'k--')
+	ax.twiny()
+	plt.plot(Data['t_rest'],Data['resid']/Data['AB_MAG_ERR'],label = 'Residuals in original basis',ls = '', marker = 'o', color = 'r')
+	plt.xlabel('Rest-frame days since estimated explosion',fontsize = 14)
+	ax.twinx()
+	plt.plot(np.arange(len(s[:imax])),fractional_std[:imax], color = 'g')
+	plt.ylabel('Fractional standard deviation',fontsize = 14)
+	plt.legend(fontsize = 14)
+
+	return rot_resid, fig, ax
 
 
 class model_piro_cooling(object):
@@ -1715,3 +1794,31 @@ def convert_bb(T,L):
 	R30 = np.sqrt(L30/(4*np.pi*sigma_sb*(T30)**4))
 	R15 = np.sqrt(L15/(4*np.pi*sigma_sb*(T15)**4))
 	return T30,L30,R30,T15,L15,R15
+
+
+
+
+def plot_lc(dat,t0, c_band, lab_band, offset, fig = 'create', ax = None,figsize = (6,15), lab_x_loc = -1.5,fontsize=16):
+	if fig == 'create':
+		fig = plt.figure(figsize=figsize)
+		ax = plt.axes()
+	filt_list = np.unique(dat['filter'])
+	cond_dic = {}
+	for band in filt_list:
+		cond_dic[band] = (dat['filter']==band)&(dat['t']>0)
+	for i,band in enumerate(filt_list):
+		ax.errorbar(dat['t_rest'][cond_dic[band]]-t0, dat['absmag'][cond_dic[band]]-offset[band],dat['AB_MAG_ERR'][cond_dic[band]],marker = '*', ls = '',color = c_band[band], markersize = 10, label = '')
+		if np.sign(-offset[band]) == 1:
+			string = lab_band[band]+' +{0}'.format(-offset[band])
+		elif np.sign(-offset[band]) == -1:
+			string = lab_band[band]+' -{0}'.format(-offset[band])
+		elif np.sign(-offset[band]) == 0:
+			string = lab_band[band]
+		if lab_band[band]!='':
+			ax.text(lab_x_loc,np.nanmean(dat['absmag'][cond_dic[band]&(dat['t_rest']<30)]-offset[band]),string, color =c_band[band], fontsize = fontsize ) 
+	ax.invert_yaxis()
+	ax.set_xlabel('Rest-frame days since estimated explosion',fontsize = fontsize)
+	ax.set_ylabel('M (AB mag)',fontsize = fontsize)
+	return fig,ax
+
+

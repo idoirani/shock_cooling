@@ -114,5 +114,12 @@ filter_transmission={
 					 'MMIRS_Ks':'MMT_MMIRS.Ks.dat'}
 
 filter_transmission = {x:path_filters + filter_transmission[x] for x in filter_transmission.keys()}
-filter_transmission = {x:ascii.read(filter_transmission[x]) for x in filter_transmission.keys()}
 
+filter_transmission_fast = {}
+for x in filter_transmission.keys():
+	try:
+ 		filter_transmission_fast[x] = np.loadtxt(filter_transmission[x])
+	except:
+		filter_transmission_fast[x] = np.loadtxt(filter_transmission[x],delimiter  = ',')	
+
+filter_transmission = {x:ascii.read(filter_transmission[x]) for x in filter_transmission.keys()}
