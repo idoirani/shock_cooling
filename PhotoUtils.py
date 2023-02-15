@@ -31,7 +31,6 @@ jy=1e-23 #erg/s/cm^2/Hz
 
 
 
-
 def zp_band_vega(Filter):
     # in angstrom
     Lambda = vega_spec[:,0]

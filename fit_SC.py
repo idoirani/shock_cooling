@@ -11,8 +11,28 @@ from params import *
 sys.path.append(path_package) 
 from PhotoUtils import *
 from blackbody_tools import *
+import argparse
+
+parser.add_argument('--path_data', type=str, help='Path to Data')
+parser.add_argument('--Date_col', type=str, help='Date column in data', default = 'jd')
+parser.add_argument('--absmag_col', type=str, help='Absolute magnitude (AB) column in data', default = 'jd')
+parser.add_argument('--M_err_col', type=str, help='Absolute magnitude error (AB) column in data')
+parser.add_argument('--filter_col', type=str, help='Unique filter column in data, corresponding to the parameter file keys in the transmission filter dictionary (instrument column will not be used)', default = 'filter')
+
+path_data=args.path_data
+Date_col=args.Date_col
+absmag_col=args.absmag_col
+M_err_col=args.M_err_col
+filter_col=args.filter_col
+
 
 data = ascii.read(path_data)
+data[Date_col].name = 'jd'
+data[absmag_col].name = 'absmag'
+data[M_err_col].name = 'AB_MAG_ERR'
+data[filter_col].name = 'filter'
+data = data['jd','filter','absmag','AB_MAG_ERR']
+
 data['t'] = data['jd'] - t0_init
 data['t_rest'] = data['t']/(1+z)
 cond = (data['t_rest']<max_t)&(data['t_rest']>min_t)

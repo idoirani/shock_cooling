@@ -3,13 +3,13 @@ import numpy as np
 
 
 
-path_mat =      './Full_batch_12_2022_Z_1_01.mat'
-path_key  =     './Full_batch_12_2022_Z_1_01_key.mat'
-path_data =     './test_files/ZTF20aaynrrh_detections_ebv_corr.ascii'
-path_dates_sn = './test_files/ZTF20aaynrrh_dates.txt'
+path_mat =      './data/Full_batch_12_2022_Z_1_01.mat'
+path_key  =     './data/Full_batch_12_2022_Z_1_01_key.mat'
+path_data =     './tests/ZTF20aaynrrh_detections_ebv_corr.ascii'
+path_dates_sn = './tests/ZTF20aaynrrh_dates.txt'
 path_out =      './output/'
 path_package =  './'
-path_filters = './Filters/'
+path_filters =  './Filters/'
 
 max_t = 10
 min_t = 0
@@ -67,7 +67,8 @@ FILTERS =   np.array(['ZTF_g'
 					 ,'v_swift'
 					 ,'b_swift'])
 
-filter_transmission={
+filter_transmission={'ATLAS_c':'Misc_Atlas.cyan.dat',
+					 'ATLAS_o':'Misc_Atlas.orange.dat',
 					 'ZTF_g':'P48_g.txt',    
 					 'ZTF_r':'P48_r.txt',    
 					 'ZTF_i':'ZTF_transmission_i_from_twiki.ascii',                        
