@@ -1,7 +1,9 @@
 LICENSE
+README.md
 pyproject.toml
 setup.py
 SCONe/PhotoUtils.py
+SCONe/__init__.py
 SCONe/blackbody_tools.py
 SCONe.egg-info/PKG-INFO
 SCONe.egg-info/SOURCES.txt

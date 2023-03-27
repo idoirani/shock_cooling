@@ -42,6 +42,7 @@ eVs = constants.h.to('eV s').value
 eV2K =1/constants.k_B.to('eV / K ')
 eV2K = eV2K.value
 
+
 def interp_data(time,data,datcol='flux'):
 		data_interp=np.interp(time,data['real_time'],data[datcol])
 		return data_interp
@@ -461,9 +462,29 @@ def MW_F_gray(tday,lam,R13,beta_bo,rho_bo,k34,Menv,d = 3.08e26, EBV=0,EBV_mw=0, 
 	f_lam = np.array(list(map(lambda l: f_nu_gray(tday,l,R13,beta_bo,rho_bo,k34,Menv,d = d), lam )))
 	flux_corr = apply_extinction(lam,f_lam,EBV=EBV,EBV_mw=EBV_mw,R_v=R_v,z=z,LAW=LAW)
 	return flux_corr
-						
+	
+def generate_cooling_mag_single(T_array, R_array ,filter_transmission,z=0, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW',H0 = 67.4):
+	if len(T_array)!=len(R_array):
+		raise Exception('R and T arrays have to be the same length') 
+	v = H0*d/3.08e24
+	z = v/300000
+	lam  = np.linspace(1000,10000,90)
+	mm = []
+	for i in range(len(T_array)):
+		flux = f_nu_bb(lam,T_array[i],R_array[i],d = d)[0]
+		if EBV>0:
+			flux = apply_extinction(lam,flux,EBV=EBV,EBV_mw=EBV_MW, R_v=Rv,z=z,LAW=LAW)
+		Trans  = filter_transmission
+		#m = SynPhot_fast(lam,flux,Trans)
+
+		m = SynPhot_fast_AB(lam,flux,Trans[:,0],Trans[:,1])
+		mm.append(m)	
+	m_array = np.array(mm)
+	return m_array 
+
+					
  
-def generate_MW_mag(time,R13,v85,fM,k34,Menv,filt_list,z=0, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW',H0 = 67.4,UV_sup = False,reduced = False):
+def generate_MW_mag(time,R13,v85,fM,k34,Menv,filt_list,filter_transmission_dic,z=0, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW',H0 = 67.4,UV_sup = False,reduced = False):
 	if UV_sup:
 		func =  MW_F_UV_sup
 	else: 
@@ -477,16 +498,17 @@ def generate_MW_mag(time,R13,v85,fM,k34,Menv,filt_list,z=0, d = 3.08e26, Rv=3.1,
 	m_array = {}
 	for filt in filt_list:
 		mm = []
-		Trans  = filter_transmission[filt]
+		Trans  = filter_transmission_dic[filt]
 		for t in time:
 			flux = func(t,lam,R13,v85,fM,k34,Menv,d = d, EBV=EBV,EBV_mw=EBV_MW, R_v=Rv,z=z,LAW=LAW)
-			m = SynPhot_fast_AB(lam,flux,Trans['col1'],Trans['col2'])
+			m = SynPhot_fast_AB(lam,flux,Trans[:,0],Trans[:,1])
 			mm.append(m)	
 		m_array[filt] = np.array(mm)
 	return m_array 
 
 
-def generate_MW_mag_single(time,R13,v85,fM,k34,Menv,filt,z=0, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW',H0 = 67.4,UV_sup = False,reduced=True):
+
+def generate_MW_mag_single(time,R13,v85,fM,k34,Menv,filt,filter_trans,z=0, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW',H0 = 67.4,UV_sup = False,reduced=True):
 	if UV_sup:
 		func =  MW_F_UV_sup
 	else: 
@@ -497,7 +519,9 @@ def generate_MW_mag_single(time,R13,v85,fM,k34,Menv,filt,z=0, d = 3.08e26, Rv=3.
 	
 	v = H0*d/3.08e24
 	z = v/300000
-	Trans  = filter_transmission_fast[filt]
+	#Trans  = filter_transmission_fast[filt]
+	Trans  = filter_trans
+
 	Trans_l = Trans[:,0]
 	Trans_T = Trans[:,1]
 	lam  = np.linspace(np.min(Trans_l),np.max(Trans_l),20)
@@ -532,7 +556,7 @@ def f_nu_bb(lam_AA,T,R,d = 3.08e26):
 
 
 class model_freq_dep_SC(object):
-	def __init__(self,R13,v85,fM,Menv,t0,k34,distance = 3.08e26,ebv = 0,Rv = 3.1, LAW = 'MW',UV_sup = False, reduced = True):
+	def __init__(self,R13,v85,fM,Menv,t0,k34,filter_transmission = None,distance = 3.08e26,ebv = 0,Rv = 3.1, LAW = 'MW',UV_sup = False, reduced = True):
 		self.ebv = ebv
 		self.Rv = Rv
 		self.distance = distance
@@ -553,6 +577,7 @@ class model_freq_dep_SC(object):
 		self.t_down = t_down
 		self.t_up   = t_up
 		self.reduced = reduced
+		self.filter_transmission = filter_transmission
 	def T_evolution(self,time): 
 		time = time.flatten()
 		T_break = self.T_break
@@ -575,16 +600,15 @@ class model_freq_dep_SC(object):
 		R = np.sqrt(Levo/(4*np.pi*sigma_sb*(Tevo)**4))
 		return R
 	def mags(self,time,filt_list): 
-		m_array = generate_MW_mag(time,self.R13,self.v85,self.fM,self.k34,self.Menv,filt_list
+		m_array = generate_MW_mag(time,self.R13,self.v85,self.fM,self.k34,self.Menv,filt_list, self.filter_transmission
 									, d =  self.distance, Rv=self.Rv, EBV = self.ebv
 									,EBV_MW = 0, LAW = self.LAW,UV_sup = self.UV_sup,reduced = self.reduced)
 		return m_array
 	def mags_single(self,time,filt): 
-		m_array = generate_MW_mag_single(time,self.R13,self.v85,self.fM,self.k34,self.Menv,filt
+		m_array = generate_MW_mag_single(time,self.R13,self.v85,self.fM,self.k34,self.Menv,filt, self.filter_transmission[filt]
 									, d =  self.distance, Rv=self.Rv, EBV = self.ebv
 									,EBV_MW = 0, LAW = self.LAW,UV_sup = self.UV_sup,reduced = self.reduced)
 		return m_array    
-
 	def likelihood(self,dat,sys_err = 0.05,nparams = 7):
 		t0 = self.t0 
 		ebv = self.ebv
@@ -621,9 +645,9 @@ class model_freq_dep_SC(object):
 			logprob = -np.inf
 		else:
 			logprob = log_chi_sq_pdf(chi_tot, dof)
+		if np.isnan(logprob):
+			import ipdb; ipdb.set_trace()
 		return logprob, chi_tot, dof
-
-
 	def likelihood_cov(self,dat,inv_cov,sys_err = 0,nparams = 7):
 		t0 = self.t0 
 		ebv = self.ebv
@@ -632,7 +656,7 @@ class model_freq_dep_SC(object):
 		d = self.distance
 		t_down  = self.t_down 
 		t_up    = self.t_up   
-		cond_valid = (dat['t_rest']>t_down)&(dat['t_rest']<t_up)
+		cond_valid = (dat['t_rest']-t0>t_down)&(dat['t_rest']-t0<t_up)
 		args_valid = np.argwhere(cond_valid).flatten()
 		if np.sum(cond_valid) == 0:
 			chi_tot = 0
@@ -671,9 +695,10 @@ class model_freq_dep_SC(object):
 			#prob = scipy.stats.chi2.pdf(chi_tot, dof)
 			#prob = float(prob)
 			logprob = log_chi_sq_pdf(chi_tot, dof)
+		if np.isnan(logprob):
+			import ipdb; ipdb.set_trace()
 		#logprob = np.log(prob)
 		return logprob, chi_tot, dof
-
 	def likelihood_bb(self,dat_bb,sys_err = 0.05,nparams = 10):
 		t0 = self.t0 
 		dof = 0
@@ -700,6 +725,181 @@ class model_freq_dep_SC(object):
 
 
 
+
+
+
+
+
+class model_SC(object):
+	def __init__(self,R13,v85,fM,Menv,t0,k34,filter_transmission = None,distance = 3.08e26,ebv = 0,Rv = 3.1, LAW = 'MW'):
+		self.ebv = ebv
+		self.Rv = Rv
+		self.distance = distance
+		self.LAW  = LAW
+		self.R13  = R13
+		self.v85  = v85
+		self.fM   = fM
+		self.Menv = Menv
+		self.k34  = k34
+		self.t0 = t0
+		t_break_hrs,T_break_eV,L_break,t_tr_day =  break_params_new(R13, v85,fM,Menv,k34)
+		self.L_break       = L_break
+		self.t_break_days  = t_break_hrs/24
+		self.t_tr_day      = t_tr_day
+		self.T_break       = T_break_eV/k_B_eVK
+		t_down,t_up = validity2(R13, v85,fM,k34,Menv)
+		self.t_down = t_down
+		self.t_up   = t_up
+		self.filter_transmission = filter_transmission
+	def T_evolution(self,time): 
+		time = time.flatten()
+		T_break = self.T_break
+		t_break_days = self.t_break_days
+		T = T_color_bb(time, T_break,t_break_days)
+		return T
+	def L_evolution(self, time):
+		time = time.flatten()
+		t_break_days = self.t_break_days
+		L_break = self.L_break
+		t_tr_day = self.t_tr_day
+		L_evo = L_BB(time, L_break,t_break_days,t_tr_day)
+		return L_evo  
+	def R_evolution(self,time): 
+		time = time.flatten()
+		Tevo = self.T_evolution(time)
+		Levo = self.L_evolution(time)
+		R = np.sqrt(Levo/(4*np.pi*sigma_sb*(Tevo)**4))
+		return R
+	def mags(self,time,filt_list): 
+		m_array={}
+		for filt in filt_list:
+			R_evo = self.R_evolution(time)
+			T_evo = self.T_evolution(time)
+			mag = generate_cooling_mag_single(T_evo, R_evo, self.filter_transmission[filt],d = self.distance, Rv=self.Rv, EBV = self.ebv,EBV_MW = 0, LAW = self.LAW)
+			m_array[filt] = mag
+		return m_array
+	def mags_single(self,time,filt): 
+		#m_array = generate_SC_mag_single(time,self.R13,self.v85,self.fM,self.k34,self.Menv,filt, self.filter_transmission[filt]
+		#							, d =  self.distance, Rv=self.Rv, EBV = self.ebv
+		#  							,EBV_MW = 0, LAW = self.LAW)
+		R_evo = self.R_evolution(time)
+		T_evo = self.T_evolution(time)
+		m_array = generate_cooling_mag_single(T_evo, R_evo,self.filter_transmission[filt],d = self.distance, Rv=self.Rv, EBV = self.ebv,EBV_MW = 0, LAW = self.LAW)
+
+		return m_array    	
+	def likelihood(self,dat,sys_err = 0.05,nparams = 7):
+		t0 = self.t0 
+		ebv = self.ebv
+		Rv = self.Rv
+		LAW = self.LAW
+		d = self.distance
+		t_down  = self.t_down 
+		t_up    = self.t_up   
+		dat = dat[(dat['t_rest']>t_down)&(dat['t_rest']<t_up)]
+		filt_list = np.unique(dat['filter'])
+		chi2_dic = {}
+		dof = 0
+		chi_tot = 0
+		N_band = []
+		for filt in filt_list:
+			dat_filt = dat[dat['filter']==filt]
+			time = dat_filt['t_rest']-t0
+			m_array = self.mags(time,filt_list = [filt])
+			mag = m_array[filt]
+			mag_obs = dat_filt['absmag']
+			mag_err = dat_filt['AB_MAG_ERR'] + sys_err
+			c2 = chi_sq(mag_obs,mag_err, mag)
+			N = len(c2)
+			chi2_dic[filt] = c2
+			dof = dof+N
+			chi_tot = chi_tot +np.sum(chi2_dic[filt])
+		dof = dof - nparams
+		
+		rchi2 = chi_tot/dof
+			
+		if chi_tot == 0:
+			logprob = -np.inf
+		elif dof <= 0:
+			logprob = -np.inf
+		else:
+			logprob = log_chi_sq_pdf(chi_tot, dof)
+		if np.isnan(logprob):
+			import ipdb; ipdb.set_trace()
+		return logprob, chi_tot, dof
+	def likelihood_cov(self,dat,inv_cov,sys_err = 0,nparams = 7):
+		t0 = self.t0 
+		ebv = self.ebv
+		Rv = self.Rv
+		LAW = self.LAW
+		d = self.distance
+		t_down  = self.t_down 
+		t_up    = self.t_up   
+		cond_valid = (dat['t_rest']-t0>t_down)&(dat['t_rest']-t0<t_up)
+		args_valid = np.argwhere(cond_valid).flatten()
+		if np.sum(cond_valid) == 0:
+			chi_tot = 0
+			logprob = -np.inf
+			dof = -1
+			return logprob, chi_tot, dof
+		inds = [np.min(args_valid),np.max(args_valid)+1]
+
+		dat = dat[args_valid]
+		#_,dat_res = compute_resid(dat.copy(),self)
+		dof = len(dat)
+		filt_list = np.unique(dat['filter'])
+		delta = np.zeros(dof,)
+		for filt in filt_list:
+			cond_filt = dat['filter']==filt
+			args_filt = np.argwhere(cond_filt).flatten()
+			dat_filt = dat[args_filt]
+			time = dat_filt['t_rest']-t0
+			mag = dat['absmag'][args_filt]
+			mags =   self.mags_single(time,filt=filt)
+			res = np.array(mag - mags)
+			delta[cond_filt] = res
+		#cov = cov[inds[0]:inds[1],inds[0]:inds[1]]
+		#inv_cov = np.linalg.inv(cov)
+		inv_cov = inv_cov[inds[0]:inds[1],inds[0]:inds[1]]
+		#prod = np.dot(delta,inv_cov)
+		#chi_tot = np.dot(prod,delta)
+		chi_tot = delta @ inv_cov @ delta
+		dof = dof - nparams
+		rchi2 = chi_tot/dof
+		if chi_tot == 0:
+			logprob = -np.inf
+		elif dof <= 0:
+			logprob = -np.inf
+		else:
+			#prob = scipy.stats.chi2.pdf(chi_tot, dof)
+			#prob = float(prob)
+			logprob = log_chi_sq_pdf(chi_tot, dof)
+		if np.isnan(logprob):
+			import ipdb; ipdb.set_trace()
+		#logprob = np.log(prob)
+		return logprob, chi_tot, dof
+	def likelihood_bb(self,dat_bb,sys_err = 0.05,nparams = 10):
+		t0 = self.t0 
+		dof = 0
+		chi_tot = 0
+		
+		time = dat_bb['t_rest']-t0
+		L_evo = self.L_evolution(time)
+		T_evo = self.T_evolution(time)
+		err_L = np.sqrt((dat_bb['L_up']-dat_bb['L'])**2 + (sys_err*dat_bb['L'])**2)
+		err_T = np.sqrt((dat_bb['T_up']-dat_bb['T'])**2 + (sys_err*dat_bb['T'])**2)
+
+		c2_L = chi_sq(dat_bb['L'],err_L, L_evo)
+		c2_T = chi_sq(dat_bb['T'],err_T, T_evo)
+
+		N = len(c2_L) + len(c2_T)
+		chi_tot = np.sum(c2_L) +np.sum(c2_T) 
+		dof =N
+		dof = dof - nparams
+		
+		rchi2 = chi_tot/dof
+
+		logprob = -chi_tot
+		return logprob, chi_tot, dof
 def generate_cooling_mag(T_array, R_array ,filt,z=0, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW',H0 = 67.4):
 	if len(T_array)!=len(R_array):
 		raise Exception('R and T arrays have to be the same length') 
@@ -758,9 +958,11 @@ def compute_resid(Data,obj):
 
 
 
-def construct_covariance_MG_v2(data,path_mat,path_key,model_func = model_freq_dep_SC,from_bo =True, valid_inds = []):
+def construct_covariance_MG_v2(data,path_mat,path_key,dic_transmission,model_func = model_freq_dep_SC,from_bo =True, valid_inds = []):
 	print('Loading simulations')
 	mat, key_mat, key_dic = get_sims(path_mat,path_key)
+	global filter_transmission 
+	filter_transmission = dic_transmission
 
 	print('Constructing SN synthetic data from MG simulations')
 	Data_filters2 = construct_sim(data,mat)
@@ -769,7 +971,6 @@ def construct_covariance_MG_v2(data,path_mat,path_key,model_func = model_freq_de
 	#right_keys = list(filter(lambda x: (x!='1')&(x!='2')&(x!='14')&(x!='17')&(x!='21'),Data_filters2.keys())) # don't include TOPS
 	Data_filters = {str(x): Data_filters2[str(x)] for x in valid_inds}
 	#Data_filters = Data_filters2
-
 	N = len(data)
 	print('Calculating residuals from analytic model')
 	imax = 0
@@ -790,7 +991,7 @@ def construct_covariance_MG_v2(data,path_mat,path_key,model_func = model_freq_de
 								,key_dic['rho_bo'][sn_ind]
 								,key_dic['Menv'][sn_ind]/constants.M_sun.cgs.value]  
 			v85,fM = phys_params_from_bo(rho_bo9,beta_bo,R13)
-		obj =   model_func(R13,v85,fM,Menv,0,1, ebv = 0, Rv = 3.1,LAW = 'MW', distance = 3.0856e19)
+		obj =   model_func(R13,v85,fM,Menv,0,1, ebv = 0, Rv = 3.1,LAW = 'MW', distance = 3.0856e19,filter_transmission = filter_transmission)
 		_,data_resid = compute_resid(data_sim,obj)
 		t_down,t_up = validity2(R13, v85,fM,1,Menv)
 		data_resid['is_valid'] = (data_resid['t_rest']<t_up)
@@ -816,9 +1017,9 @@ def construct_covariance_MG_v2(data,path_mat,path_key,model_func = model_freq_de
    
 	return resids_cov,resids,tmax
 
-def generate_full_covariance(data,path_mat,path_key,sys_err = 0.1,covar = True):
+def generate_full_covariance(data,path_mat,path_key,dic_transmission,sys_err = 0.1,covar = True,valid_inds = []):
 	if covar:
-		resids_cov,resids,t_max = construct_covariance_MG_v2(data,path_mat,path_key,model_func = model_freq_dep_SC,valid_inds=key_dic['ind_valid'])
+		resids_cov,_,t_max = construct_covariance_MG_v2(data,path_mat,path_key,dic_transmission = dic_transmission,model_func = model_freq_dep_SC,valid_inds=valid_inds)
 		#resids_cov[np.isnan(resids_cov)] = 0   
 		cov_obs = np.diagflat(np.array(data[(data['t_rest']<=t_max)]['AB_MAG_ERR'])**2+ sys_err**2)   
 		#cov = resids_cov + cov_obs  
@@ -836,6 +1037,7 @@ def generate_full_covariance(data,path_mat,path_key,sys_err = 0.1,covar = True):
 		inv_cov = np.linalg.inv(cov_obs)
 	return inv_cov,cov_est
 
+
 def construct_sim(data,mat, d = 3.0856e+19):
 
 	sn_skeleton = data.copy()
@@ -843,7 +1045,7 @@ def construct_sim(data,mat, d = 3.0856e+19):
 	runs = {str(i): mat[i] for i in range(len(mat))}
 	Data_filters = {}
 	times = {}
-	instrum = {}
+	#instrum = {}
 	piv  = {}
 	Null_tab  = {}
 	for key in  tqdm.tqdm(runs.keys()):
@@ -852,16 +1054,18 @@ def construct_sim(data,mat, d = 3.0856e+19):
 		t = t-t[0] # t is measure relative to CC and not breakout. t-t[0] might remove first hour or so from explosion as simulations start at most from 2R/C and R<1e14
 		f_lam = dat[1]/4/np.pi/d**2
 		lam = dat[2]
-		Tab = sn_skeleton[0:0]['t_rest','filter','piv_wl','AB_MAG','instrument']
+		Tab = sn_skeleton[0:0]['t_rest','filter','piv_wl','absmag']
+		#Tab = sn_skeleton[0:0]['t_rest','filter','piv_wl','absmag','instrument']
+
 		Tab = Tab.to_pandas()
 		for filt in filters2include: 
 			cond = (sn_skeleton['filter'] == filt)&(sn_skeleton['t_rest']<np.max(t))
 			cond2 = (sn_skeleton['filter'] == filt)&(sn_skeleton['t_rest']>np.max(t))
 			times[filt] = np.array(sn_skeleton['t_rest'][cond])
 			piv[filt] =     sn_skeleton['piv_wl'][0]
-			instrum[filt] = sn_skeleton['instrument'][0]
-			Null_tab[filt] = sn_skeleton[cond2]['t_rest','AB_MAG']
-			Null_tab[filt]['AB_MAG'] = Null_tab[filt]['AB_MAG']*np.nan
+			#instrum[filt] = sn_skeleton['instrument'][0]
+			Null_tab[filt] = sn_skeleton[cond2]['t_rest','absmag']
+			Null_tab[filt]['absmag'] = Null_tab[filt]['absmag']*np.nan
 
 		for filt in filters2include:
 		
@@ -869,32 +1073,36 @@ def construct_sim(data,mat, d = 3.0856e+19):
 			mag = []
 			for i in inds:
 				flux = f_lam[i,:]
-				m = SynPhot_fast_AB(lam,flux,filter_transmission[filt]['col1'],filter_transmission[filt]['col2'])[0]
+				m = SynPhot_fast_AB(lam,flux,filter_transmission[filt][:,0],filter_transmission[filt][:,1])[0]
 				mag.append(m)
-			tab = table.Table([times[filt],mag], names = ['t_rest','AB_MAG'])
+			tab = table.Table([times[filt],mag], names = ['t_rest','absmag'])
 			if len(times[filt]>0):
 				tab['filter'] = filt
 				tab['piv_wl'] = piv[filt]
-				tab['instrument'] = instrum[filt]
+				#tab['instrument'] = instrum[filt]
 
 			else: 
 				tab['filter']     = sn_skeleton[0:0]['filter']    
 				tab['piv_wl']     = sn_skeleton[0:0]['piv_wl']     
-				tab['instrument'] = sn_skeleton[0:0]['instrument']              
-			tab = tab['t_rest','filter','piv_wl','AB_MAG','instrument']
+				#tab['instrument'] = sn_skeleton[0:0]['instrument']              
+			#tab = tab['t_rest','filter','piv_wl','absmag','instrument']
+			tab = tab['t_rest','filter','piv_wl','absmag']
+
 			tab = tab.to_pandas()
 			if len(Null_tab[filt])>0:
 				Null_tab[filt]['filter'] = filt
 				Null_tab[filt]['piv_wl'] = piv[filt]
-				Null_tab[filt]['instrument'] = instrum[filt]
-				Null_tab[filt] = Null_tab[filt]['t_rest','filter','piv_wl','AB_MAG','instrument']
+				#Null_tab[filt]['instrument'] = instrum[filt]
+				#Null_tab[filt] = Null_tab[filt]['t_rest','filter','piv_wl','absmag','instrument']
+				Null_tab[filt] = Null_tab[filt]['t_rest','filter','piv_wl','absmag']
+
 				Null_tab[filt] = Null_tab[filt].to_pandas()
 				tab = tab.append(Null_tab[filt])
 			Tab = Tab.append(tab)
 			#Tab = table.vstack([Tab,tab])
 		Tab =  table.Table.from_pandas(Tab)
 		Tab.sort('t_rest')
-		Tab['absmag'] = Tab['AB_MAG']
+		#Tab['absmag'] = Tab['AB_MAG']
 		Tab['jd'] = Tab['t_rest']
 		Tab['t'] = Tab['t_rest']
 		Data_filters[key] = Tab.copy()
@@ -941,18 +1149,24 @@ def get_sims(path_mat,path_key):
 
 
 
-def likelihood_freq_dep_SC(data,R13,v85,fM,Menv,t0,k34=1,distance = 3.0856e19,ebv = 0,Rv = 3.1 , LAW = 'MW',sys_err = 0.05,nparams = 7,UV_sup = False,reduced=True):
+def likelihood_freq_dep_SC(data,R13,v85,fM,Menv,t0,filter_transmission,k34=1,distance = 3.0856e19,ebv = 0,Rv = 3.1 , LAW = 'MW',sys_err = 0.05,nparams = 7,UV_sup = False,reduced=True):
 
-	obj = model_freq_dep_SC(R13,v85,fM,Menv,t0,k34, distance =distance, ebv = ebv, Rv = Rv, LAW = LAW,UV_sup = UV_sup,reduced=reduced)
+	obj = model_freq_dep_SC(R13,v85,fM,Menv,t0,k34, distance =distance, ebv = ebv, Rv = Rv, LAW = LAW,UV_sup = UV_sup,reduced=reduced,filter_transmission = filter_transmission)
 	logprob, chi_tot, dof_tot = obj.likelihood(data, sys_err = sys_err ,nparams = nparams)
 	return logprob, chi_tot, dof_tot 
 
-def likelihood_freq_dep_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0,k34=1,distance = 3.0856e19,ebv = 0,Rv = 3.1 , LAW = 'MW',sys_err = 0.05,nparams = 7,UV_sup = False,reduced=True):
+def likelihood_freq_dep_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0,filter_transmission,k34=1,distance = 3.0856e19,ebv = 0,Rv = 3.1 , LAW = 'MW',sys_err = 0.05,nparams = 7,UV_sup = False,reduced=True):
 	
-	obj = model_freq_dep_SC(R13,v85,fM,Menv,t0,k34, distance =distance, ebv = ebv, Rv = Rv, LAW = LAW,UV_sup = UV_sup,reduced=reduced)
+	obj = model_freq_dep_SC(R13,v85,fM,Menv,t0,k34, distance =distance, ebv = ebv, Rv = Rv, LAW = LAW,UV_sup = UV_sup,reduced=reduced,filter_transmission = filter_transmission)
 	logprob, chi_tot, dof_tot = obj.likelihood_cov(data,inv_cov, sys_err = sys_err ,nparams = nparams)
 	return logprob, chi_tot, dof_tot 
 
+
+def likelihood_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0,filter_transmission,k34=1,distance = 3.0856e19,ebv = 0,Rv = 3.1 , LAW = 'MW',sys_err = 0.05,nparams = 7,UV_sup = False,reduced=True):
+	
+	obj = model_SC(R13,v85,fM,Menv,t0,k34, distance =distance, ebv = ebv, Rv = Rv, LAW = LAW,filter_transmission = filter_transmission)
+	logprob, chi_tot, dof_tot = obj.likelihood_cov(data,inv_cov, sys_err = sys_err ,nparams = nparams)
+	return logprob, chi_tot, dof_tot 
 
 
 
@@ -978,9 +1192,9 @@ def uniform_prior_transform(u,**kwargs):
 		prior_list.append(prior_dist)
 	return prior_list
 
-
-
-def fit_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):  
+#
+#
+#def fit_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):  
 	inputs={'priors':[np.array([0.05,5]),
 					  np.array([0.3,5]),
 					  np.array([0.05,1000]),
@@ -1065,8 +1279,8 @@ def fit_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 	#results_sim = dyfunc.simulate_run(dresults)
 
 	return mean, quantiles,dresults
-	
-def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):  
+#	
+def fit_freq_dep_SC(data, dic_transmission,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):  
 	inputs={'priors':[np.array([0.05,5]),
 					  np.array([0.3,5]),
 					  np.array([0.05,1000]),
@@ -1109,7 +1323,8 @@ def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 	if inv_cov =='':
 		 inv_cov=  np.diagflat(1/(np.array(data['AB_MAG_ERR'])**2+ sys_err**2))
 
-
+	global filter_transmission_fast 
+	filter_transmission_fast = dic_transmission
 	data = data['t_rest','filter','absmag','AB_MAG_ERR']
 
 
@@ -1122,9 +1337,9 @@ def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 		t07 = 6.86*R13**(0.56)*v85**(0.16)*k34**(-0.61)*fM**(-0.06) + t0
 		if (t07<rec_time_lims[1])&(t07>rec_time_lims[0]):
 			if covariance:
-				loglike = likelihood_freq_dep_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 6,UV_sup=UV_sup,reduced=reduced)[0]
+				loglike = likelihood_freq_dep_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 6,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
 			else:
-				loglike = likelihood_freq_dep_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 6,UV_sup=UV_sup,reduced=reduced)[0]
+				loglike = likelihood_freq_dep_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 6,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
 		else: 
 			loglike = -np.inf
 		return loglike  
@@ -1133,9 +1348,9 @@ def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 		t07 = 6.86*R13**(0.56)*v85**(0.16)*k34**(-0.61)*fM**(-0.06) + t0
 		if (t07<rec_time_lims[1])&(t07>rec_time_lims[0]):        
 			if covariance:
-				loglike = likelihood_freq_dep_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 7,UV_sup=UV_sup,reduced=reduced)[0]
+				loglike = likelihood_freq_dep_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 7,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
 			else: 
-				loglike = likelihood_freq_dep_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 7,UV_sup=UV_sup,reduced=reduced)[0]
+				loglike = likelihood_freq_dep_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 7,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
 		else: 
 			loglike = -np.inf
 		return loglike
@@ -1144,9 +1359,9 @@ def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 		t07 = 6.86*R13**(0.56)*v85**(0.16)*k34**(-0.61)*fM**(-0.06) + t0
 		if (t07<rec_time_lims[1])&(t07>rec_time_lims[0]):   
 			if covariance:
-				loglike = likelihood_freq_dep_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 5,UV_sup=UV_sup,reduced=reduced)[0]
+				loglike = likelihood_freq_dep_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 5,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
 			else: 
-				loglike = likelihood_freq_dep_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 5,UV_sup=UV_sup,reduced=reduced)[0]
+				loglike = likelihood_freq_dep_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 5,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
 		else: 
 			loglike = -np.inf
 		return loglike
@@ -1193,6 +1408,137 @@ def fit_freq_dep_SC(data,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):
 	#results_sim = dyfunc.simulate_run(dresults)
 
 	return mean, quantiles,dresults
+
+	
+def fit_SC(data, dic_transmission,k34 = 1, plot_corner = True,sys_err = 0.05,**kwargs):  
+	inputs={'priors':[np.array([0.05,5]),
+					  np.array([0.3,5]),
+					  np.array([0.05,1000]),
+					  np.array([0.1,10]),
+					  np.array([-0.5,0.5]),
+					  np.array([0,0.3]),
+					  np.array([2,5])]
+			,'maxiter':100000
+			,'maxcall':500000
+			,'nlive':250
+			,'ebv':'fit'
+			,'Rv':3.1
+			,'LAW':'MW',
+			'UV_sup':False,
+			'reduced':True,
+			'covariance':True
+			,'inv_cov':''
+			,'rec_time_lims':[-np.inf,np.inf]}                            
+	inputs.update(kwargs)
+ 
+	maxiter=inputs.get('maxiter')  
+	maxcall=inputs.get('maxcall')  
+	nlive=inputs.get('nlive')  
+	ebv = inputs.get('ebv')  
+	Rv = inputs.get('Rv')  
+	LAW = inputs.get('LAW')  
+	priors=inputs.get('priors') 
+	UV_sup = inputs.get('UV_sup')
+	reduced = inputs.get('reduced')
+
+	covariance = inputs.get('covariance')
+	inv_cov = inputs.get('inv_cov')
+	rec_time_lims = inputs.get('rec_time_lims')
+
+	if ebv == 'fit':
+		if Rv != 'fit':
+			priors = priors[0:6]
+	else:
+		priors = priors[0:5]
+	if inv_cov =='':
+		 inv_cov=  np.diagflat(1/(np.array(data['AB_MAG_ERR'])**2+ sys_err**2))
+
+	global filter_transmission_fast 
+	filter_transmission_fast = dic_transmission
+	data = data['t_rest','filter','absmag','AB_MAG_ERR']
+
+
+	def prior_transform(u,priors = priors):
+		x=uniform_prior_transform(u,priors =priors )
+		return x
+
+	def myloglike(x):
+		R13,v85,fM,Menv,t0,ebv = x   
+		t07 = 6.86*R13**(0.56)*v85**(0.16)*k34**(-0.61)*fM**(-0.06) + t0
+		if (t07<rec_time_lims[1])&(t07>rec_time_lims[0]):
+			if covariance:
+				loglike = likelihood_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 6,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
+			else:
+				loglike = likelihood_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 6,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
+		else: 
+			loglike = -np.inf
+		return loglike  
+	def myloglike2(x):
+		R13,v85,fM,Menv,t0,ebv,Rv = x   
+		t07 = 6.86*R13**(0.56)*v85**(0.16)*k34**(-0.61)*fM**(-0.06) + t0
+		if (t07<rec_time_lims[1])&(t07>rec_time_lims[0]):        
+			if covariance:
+				loglike = likelihood_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 7,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
+			else: 
+				loglike = likelihood_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 7,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
+		else: 
+			loglike = -np.inf
+		return loglike
+	def myloglike3(x):
+		R13,v85,fM,Menv,t0 = x 
+		t07 = 6.86*R13**(0.56)*v85**(0.16)*k34**(-0.61)*fM**(-0.06) + t0
+		if (t07<rec_time_lims[1])&(t07>rec_time_lims[0]):   
+			if covariance:
+				loglike = likelihood_SC_cov(data,inv_cov,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 5,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
+			else: 
+				loglike = likelihood_SC(data,R13,v85,fM,Menv,t0=t0,k34 = k34,ebv = ebv, Rv = Rv, sys_err = sys_err, LAW = LAW,nparams = 5,UV_sup=UV_sup,reduced=reduced,filter_transmission = filter_transmission_fast)[0]
+		else: 
+			loglike = -np.inf
+		return loglike
+
+	if ebv == 'fit':
+		if Rv == 'fit': 
+			myloglike_choice = myloglike2
+			ndim = 7
+			labels = [r'$R_{13}$',r'$v_{s,8.5}$',r'$f_{\rhp}M$',r'$M_{env}$',r'$t_{0}$',r'$E(B-V)$',r'$R_V$']
+			labels = labels        
+		else:
+			ndim = 6
+			labels = [r'$R_{13}$',r'$v_{s,8.5}$',r'$f_{\rhp}M$',r'$M_{env}$',r'$t_{0}$',r'$E(B-V)$'] 
+			myloglike_choice = myloglike
+	else:
+		ndim = 5
+		labels = [r'$R_{13}$',r'$v_{s,8.5}$',r'$f_{\rhp}M$',r'$M_{env}$',r'$t_{0}$']
+		myloglike_choice = myloglike3
+
+	dsampler = dynesty.DynamicNestedSampler(myloglike_choice, prior_transform,  ndim = ndim,nlive=nlive,update_interval=600)
+
+	dsampler.run_nested(maxiter=maxiter, maxcall=maxcall)
+	dresults = dsampler.results
+	if plot_corner:
+		# Plot a summary of the run.
+		#rfig, raxes = dyplot.runplot(dresults)
+		# Plot traces and 1-D marginalized posteriors.
+		#tfig, taxes = dyplot.traceplot(dresults)    
+		# Plot the 2-D marginalized posteriors.
+		cfig, caxes = dyplot.cornerplot(dresults,labels=labels
+								,label_kwargs={'fontsize':14}, color = '#0042CF',show_titles = True)
+	## add labels!
+	# Extract sampling results.
+	samples = dresults.samples  # samples
+	weights = np.exp(dresults.logwt - dresults.logz[-1])  # normalized weights
+	# Compute 10%-90% quantiles.
+	quantiles = [dyfunc.quantile(samps, [0.1, 0.9], weights=weights)
+				 for samps in samples.T]
+	# Compute weighted mean and covariance.
+	mean, _ = dyfunc.mean_and_cov(samples, weights)
+	# Resample weighted samples.
+	#samples_equal = dyfunc.resample_equal(samples, weights)
+	# Generate a new set of results with statistical+sampling uncertainties.
+	#results_sim = dyfunc.simulate_run(dresults)
+
+	return mean, quantiles,dresults
+
 
 
 
@@ -1264,7 +1610,7 @@ def plot_resid_covariance(dat,obj,cov, fig = 'create', ax = None,figsize = (6,4)
 
 	#use the matriced  to rotate the resid vector to the SVD basis
 	rot_resid = np.dot(Data['resid'],vh)
-	A = u[:,:3] @ np.diag(d[:3]) @ v[:3,:] 
+	A = u[:,:3] @ np.diag(s[:3]) @ vh[:3,:] 
 	#compute the error in the rotated basis
 	rot_resid_err = np.sqrt(np.dot(Data['AB_MAG_ERR']**2,np.abs(vh)))
 	if fig == 'create':
@@ -1761,23 +2107,26 @@ def plot_lc_2model(dat, obj1, obj2, c_band, lab_band, offset, fig = 'create', ax
 	ax.set_ylabel('M (AB mag)',fontsize = 14)
 	return fig,ax
 
-def plot_lc_model_only(obj,filt_list,tmin,tmax, c_band, lab_band,validity = False):
+def plot_lc_model_only(obj,filt_list,tmin,tmax, c_band, lab_band,offset,validity = False, fig = 'create', ax = None,**kwargs):
+	if fig == 'create':
+		fig = plt.figure(figsize=(6,15))
+		ax = plt.axes()
+		print('create figure')
 
 	time_2 = np.logspace(np.log10(tmin),np.log10(tmax),30)
 	if validity:
 		time_2 = np.logspace(np.log10(obj.t_down),np.log10(obj.t_up),30)
 	mags =   obj.mags(time_2,filt_list=filt_list)
-	plt.figure(figsize=(6,15))
 	for i,band in enumerate(filt_list):
-		plt.plot(time_2,mags[band],color =c_band[band] ,alpha = 0.5,ls = '-.',linewidth = 3,label = lab_band[band])
-
-	plt.xlim((0.01,1.1*np.max(time_2)))
-	plt.gca().invert_yaxis()
+		ax.plot(time_2,mags[band]-offset[band],color =c_band[band],label = lab_band[band],**kwargs)
+	#ax.set_xlim((0.01,1.1*np.max(time_2)))
+	if fig == 'create':
+		plt.gca().invert_yaxis()
 	plt.xlabel('Rest-frame days since estimated explosion',fontsize = 14)
 	plt.ylabel('M (AB mag)',fontsize = 14)
-	plt.xscale('log')
+	#plt.xscale('log')
 	plt.legend()
-	pass
+	return fig,ax
 
 def convert_bb(T,L):
 	#using Faran et al. 

@@ -8,11 +8,9 @@ from astropy import constants
 import os
 import sys
 from extinction import ccm89,calzetti00, apply, remove 
-from params import path_package
-sys.path.insert(1,path_package+'/barak')
-from extinction_barak import SMC_Gordon03,LMC_Gordon03
-sys.path.insert(1,path_package)
-from PhotoUtils import cosmo_dist
+
+#ys.path.insert(1,path_package)
+from SCONe.PhotoUtils import cosmo_dist
 from numba import jit,njit
 ##parameters 
 import argparse
@@ -33,7 +31,17 @@ parser.add_argument('--EBV_host',default=0, type=float, help='Host extinction E(
 parser.add_argument('--LAW',default='MW', type=str, help='Host extinction LAW: MW/SMC/LMC/Cal00')
 parser.add_argument('--fit_ex',default=False, type=bool, help='Fit extinction? True/False')
 parser.add_argument('--modify_BB_MSW',default=False, type=str, help='Use the modified blackbody formula described in Morag Sapir and Waxman 2023')
+parser.add_argument('--path_params', type=str, help='path to parameter file', default = 'filter')
 
+#
+#parser.add_argument('--Date_col'   , type=str, help='Date column in data', default = 'jd')
+#parser.add_argument('--absmag_col' , type=str, help='Absolute magnitude (AB) column in data', default = 'absmag')
+#parser.add_argument('--M_err_col'  , type=str, help='Absolute magnitude error (AB) column in data')
+#parser.add_argument('--filter_col' , type=str, help='Unique filter column in data, corresponding to the parameter file keys in the transmission filter dictionary (instrument column will not be used)', default = 'filter')
+#parser.add_argument('--flux_col'   ,default='flux', type=str, help='f_lambda column in data')
+#parser.add_argument('--fluxerr_col',default='fluxerr', type=str, help='f_lambda error column in data')
+#parser.add_argument('--piv_wl_col' ,default='piv_wl', type=str, help='pivot wavelength column in data')
+#
 from matplotlib import gridspec
 plt.rcParams.update({
   "text.usetex": True,
@@ -43,7 +51,7 @@ args = parser.parse_args()
 #plots 
 
  
-
+Path_params=args.path_params
 Data_path=args.data
 Dates_path=args.dates
 sn=args.name
@@ -63,11 +71,23 @@ if modify_BB_MSW not in ['True','False']:
 modify_BB_MSW = modify_BB_MSW=='True'
 plots = plots=='True'
 write = write=='True'
-
-
+#Date_col=args.Date_col
+#M_err_col=args.M_err_col
+#filter_col=args.filter_col
+#absmag_col=args.absmag_col
+#M_err_col=args.M_err_col
+#flux_col   =args.flux_col
+#fluxerr_col = args.fluxerr_col
+#piv_wl_col = args.piv_wl_col
+#
+#
 plot_lc=plots
 plot_sed=plots
 
+params_name = Path_params.split('/')[-1].split('.py')[0]
+params_dir = Path_params.split(params_name)[0]
+sys.path.append(params_dir) 
+exec("from {0} import *".format(params_name))
 
 if z == -1:
 	raise ValueError('z has to be a number larger than 0')
@@ -124,6 +144,19 @@ sigma_sb=constants.sigma_sb.cgs.value
 
 # load data
 data = ascii.read(Data_path)
+data = data[Date_col,filter_col,absmag_col,M_err_col,flux_col,fluxerr_col,piv_wl_col]
+data[Date_col].name = 'jd'
+data[absmag_col].name = 'absmag'
+data[M_err_col].name = 'AB_MAG_ERR'
+data[filter_col].name = 'filter'
+data[flux_col].name = 'flux'
+data[fluxerr_col].name = 'fluxerr'
+data[piv_wl_col].name = 'piv_wl'
+
+
+
+
+
 if 't_rest' not in data.colnames:
 	data['t'] = data['jd'] -  first_time
 	data['rest_time'] = data['t']/(1+z)
@@ -134,17 +167,17 @@ data['fluxerr'] = np.sqrt(data['fluxerr']**2+(data['flux']*sys_err)**2)
 #data['fluxerr']=np.sqrt(data['fluxerr']**2+0.01*data['flux']**2)  
 if Dates_path!='':
 	dates= np.loadtxt(Dates_path)
-else: 
-	uvot = data[data['instrument'] == 'Swift+UVOT']
-	tt = np.unique(np.round(uvot['t']*2)/2)
-	ts = np.zeros_like(tt)
-	ts[0] = np.max(uvot['t'][np.round(uvot['t']*2)/2 == tt[0]])+0.01
-	for i in range(len(tt)):
-		ts[i] = np.mean(uvot['t'][np.round(uvot['t']*2)/2 == tt[i]])
-	ts[-1] = np.min(uvot['t'][np.round(uvot['t']*2)/2 == tt[-1]])-0.01
-	dates = np.array(ts) +first_time
-#FIT EXTINCTION?
-
+#else: 
+#	uvot = data[data['instrument'] == 'Swift+UVOT']
+#	tt = np.unique(np.round(uvot['t']*2)/2)
+#	ts = np.zeros_like(tt)
+#	ts[0] = np.max(uvot['t'][np.round(uvot['t']*2)/2 == tt[0]])+0.01
+#	for i in range(len(tt)):
+#		ts[i] = np.mean(uvot['t'][np.round(uvot['t']*2)/2 == tt[i]])
+#	ts[-1] = np.min(uvot['t'][np.round(uvot['t']*2)/2 == tt[-1]])-0.01
+#	dates = np.array(ts) +first_time
+##FIT EXTINCTION?
+#
 Rv = np.linspace(2,5,10)
 if LAW == 'LMC':
 	Rv = np.linspace(3.41-0.001,3.41+0.001,3)
@@ -239,6 +272,7 @@ filters=['r_sdss'
 		,'MMIRS_H'
 		,'MMIRS_Ks']
 
+
 markers={
 	'r_sdss'   :'o'
 	,'g_sdss'  :'o'
@@ -286,8 +320,9 @@ markers={
 	,'Ni_CLEAR':'P'
 	,'MMIRS_J':'*'
 	,'MMIRS_H':'*'
-	,'MMIRS_Ks':'*'}
-
+	,'MMIRS_Ks':'*'
+	,'ATLAS_c':'x' 
+	,'ATLAS_o':'x'  }
 
 colors={
 	'r_sdss'   :'#EA0000'
@@ -338,8 +373,9 @@ colors={
 	,'MMIRS_H':'#6C7500'
 	,'MMIRS_Ks':'#6D3D39'}        
 
-	
-excluded_bands = []#['r_sdss' 
+colors  = c_band 
+
+excluded_bands = ['ATLAS_c','ATLAS_o']#['r_sdss' 
 				 #,'g_sdss'
 				 #,'i_sdss'
 				 #,'z_sdss'
@@ -503,19 +539,19 @@ def bb_F_reduced(lam_um,T_k,r_bb,EBV = 0, EBV_mw = 0,R_v = 3.1, LAW = 'MW',z=0,d
 
 def apply_extinction(lam,flam,EBV=0,EBV_mw=0, R_v=3.1,z=0,LAW=LAW):
 	if EBV>0:
-		if LAW == 'SMC':
-			ex = SMC_Gordon03(lam*(1+z))
-			ex.set_EBmV(EBV)
-			A_v = ex.Av
-			Alam  = A_v*ex.AlamAv 
-			flux = flam*10**(-0.4*Alam)
-		elif LAW == 'LMC':
-			ex = LMC_Gordon03(lam*(1+z))
-			ex.set_EBmV(EBV)
-			A_v = ex.Av
-			Alam  = A_v*ex.AlamAv 
-			flux = flam*10**(-0.4*Alam)
-		elif LAW == 'Cal00':
+		#elif LAW == 'SMC':
+		#	ex = SMC_Gordon03(lam*(1+z))
+		#	ex.set_EBmV(EBV)
+		#	A_v = ex.Av
+		#	Alam  = A_v*ex.AlamAv 
+		#	flux = flam*10**(-0.4*Alam)
+		#elif LAW == 'LMC':
+		#	ex = LMC_Gordon03(lam*(1+z))
+		#	ex.set_EBmV(EBV)
+		#	A_v = ex.Av
+		#	Alam  = A_v*ex.AlamAv 
+		#	flux = flam*10**(-0.4*Alam)
+		if LAW == 'Cal00':
 			A_v=R_v*EBV
 			flux=apply(calzetti00(lam, A_v, R_v,unit='aa'), flam)
 			
@@ -633,7 +669,6 @@ for filt in np.unique(data['filter']):
 del filt 
 filters=np.unique(data['filter'])
 time=(dates-first_time)/(1+z)
-
 if plot_lc==1:
 	plt.figure()
 	for filter in np.unique(data['filter']):
