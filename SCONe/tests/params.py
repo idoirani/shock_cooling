@@ -45,7 +45,7 @@ filter_col  = 'filter'
 flux_col    = 'flux'  
 fluxerr_col = 'fluxerr'
 piv_wl_col  = 'piv_wl'
-inst_col = 'instrument'
+inst_col    = 'instrument'
 
 model_func = model_freq_dep_SC  
 fit_func = fit_freq_dep_SC
