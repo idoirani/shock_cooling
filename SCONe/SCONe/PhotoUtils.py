@@ -225,12 +225,11 @@ def get_inter_mag_array(t_array, phot, filt, t_max = 3, verbose = False,t_col = 
 	arr = np.array(lis)
 	return arr
 
-def get_inter_mag(t, phot, filt, t_max = 3, verbose = False,t_col = 't_rest'):
-	phot.sort(t_col)
-	phot = phot[~np.isnan(phot['AB_MAG'])]
-	mag = phot['AB_MAG'][phot['filter']==filt]
-	magerr = phot['AB_MAG_ERR'][phot['filter']==filt]
-	T  = phot[t_col][phot['filter']==filt]  
+
+def get_inter_mag(t, phot, filt,mag_col = 'AB_MAG', mag_col_err = 'AB_MAG_ERR',filt_col = 'filter',t_col = 't_rest',t_max=2):
+	mag = phot[mag_col][phot[filt_col]==filt]
+	magerr = phot[mag_col_err][phot[filt_col]==filt]
+	T  = phot[t_col][phot[filt_col]==filt]  
 	if len(mag) == 0:
 		print('no points with the filter {0}'.format(filt))
 		return np.nan,np.nan ,np.nan 
@@ -256,15 +255,11 @@ def get_inter_mag(t, phot, filt, t_max = 3, verbose = False,t_col = 't_rest'):
 		b = (t-t1)/(t2-t1)
 		m = a*m1 + b*m2
 		m_err = np.sqrt(a**2*m1_err**2 + b**2*m2_err**2)
-		if t2-t1> 0.0135+(1e9)*t/3e10:
-			if verbose:
-				print('warning: dt>R/C')
-		if t2 - t1 > 5:
-			if verbose:
-				print('warning: dt > 5 days')
-		if (t2-t1>2*t_max):
-			if verbose:
-				print('maximum time diff > {0} days. Returning nan'.format(t_max))
+
+		#if t2 - t1 > 5:
+		#    print('warning: dt > {0} days'.format(t_max))
+		if min((t2  - t),(t-t1)) > t_max:
+			print('maximum time diff > {0} days. Returning nan'.format(t_max))
 			return np.nan,np.nan ,np.nan  
 		return m[0],m_err[0],(t2-t1)[0]
 
@@ -564,10 +559,10 @@ def estimate_galaxy_mass_W2(W2mag,dist_Mpc,type = 'all',W2err = 0):
 	return logM, unc 
 
 
-def estimate_SFR_UV(f_lam,lam_AA,z):
+def estimate_SFR_UV(f_lam,lam_AA,d_mpc):
 
 	f_nu=f_lam2f_nu(f_lam,lam_AA)
-	d_Mpc,_,_,_=cosmo_dist(z)
+	#d_Mpc,_,_,_=cosmo_dist(z)
 	D=d_Mpc*Mpc
 	lum_nu=f_nu*4*np.pi*D**2
 	SFR=1.46e-28*lum_nu #Salim 2007
