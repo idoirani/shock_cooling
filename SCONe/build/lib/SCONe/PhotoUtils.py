@@ -225,12 +225,11 @@ def get_inter_mag_array(t_array, phot, filt, t_max = 3, verbose = False,t_col = 
 	arr = np.array(lis)
 	return arr
 
-def get_inter_mag(t, phot, filt, t_max = 3, verbose = False,t_col = 't_rest'):
-	phot.sort(t_col)
-	phot = phot[~np.isnan(phot['AB_MAG'])]
-	mag = phot['AB_MAG'][phot['filter']==filt]
-	magerr = phot['AB_MAG_ERR'][phot['filter']==filt]
-	T  = phot[t_col][phot['filter']==filt]  
+
+def get_inter_mag(t, phot, filt,mag_col = 'AB_MAG', mag_col_err = 'AB_MAG_ERR',filt_col = 'filter',t_col = 't_rest',t_max=2):
+	mag = phot[mag_col][phot[filt_col]==filt]
+	magerr = phot[mag_col_err][phot[filt_col]==filt]
+	T  = phot[t_col][phot[filt_col]==filt]  
 	if len(mag) == 0:
 		print('no points with the filter {0}'.format(filt))
 		return np.nan,np.nan ,np.nan 
@@ -256,15 +255,11 @@ def get_inter_mag(t, phot, filt, t_max = 3, verbose = False,t_col = 't_rest'):
 		b = (t-t1)/(t2-t1)
 		m = a*m1 + b*m2
 		m_err = np.sqrt(a**2*m1_err**2 + b**2*m2_err**2)
-		if t2-t1> 0.0135+(1e9)*t/3e10:
-			if verbose:
-				print('warning: dt>R/C')
-		if t2 - t1 > 5:
-			if verbose:
-				print('warning: dt > 5 days')
-		if (t2-t1>2*t_max):
-			if verbose:
-				print('maximum time diff > {0} days. Returning nan'.format(t_max))
+
+		#if t2 - t1 > 5:
+		#    print('warning: dt > {0} days'.format(t_max))
+		if min((t2  - t),(t-t1)) > t_max:
+			print('maximum time diff > {0} days. Returning nan'.format(t_max))
 			return np.nan,np.nan ,np.nan  
 		return m[0],m_err[0],(t2-t1)[0]
 
@@ -564,10 +559,10 @@ def estimate_galaxy_mass_W2(W2mag,dist_Mpc,type = 'all',W2err = 0):
 	return logM, unc 
 
 
-def estimate_SFR_UV(f_lam,lam_AA,z):
+def estimate_SFR_UV(f_lam,lam_AA,d_mpc):
 
 	f_nu=f_lam2f_nu(f_lam,lam_AA)
-	d_Mpc,_,_,_=cosmo_dist(z)
+	#d_Mpc,_,_,_=cosmo_dist(z)
 	D=d_Mpc*Mpc
 	lum_nu=f_nu*4*np.pi*D**2
 	SFR=1.46e-28*lum_nu #Salim 2007
@@ -866,6 +861,80 @@ def Vega_nMgy_2_ABmag(flux_nMGY, band = 'W2'):
 def size_mass(Ms,Mp=10**10.2,rp=8.6,a=0.17,b=0.5,d=6):
 	r80 = rp*(Ms/Mp)**a*(0.5*(1+(Ms/Mp)**d))**((b-a)/d)
 	return r80 
+
+
+
+
+
+def color(mag1,mag2,magerr1,magerr2):
+	col = mag1 - mag2
+	colerr = np.sqrt(magerr1**2 + magerr2**2)
+	return col,colerr 
+
+
+
+def get_inter_mag(t, phot, filt,t_max=2):
+	mag = phot['AB_MAG'][phot['filter']==filt]
+	magerr = phot['AB_MAG_ERR'][phot['filter']==filt]
+	T  = phot['t_rest'][phot['filter']==filt]  
+	if len(mag) == 0:
+		print('no points with the filter {0}'.format(filt))
+		return np.nan,np.nan ,np.nan 
+	elif len(mag) == 1:
+		if (T[0] - t)<0.1:
+			return mag[0],magerr[0],T[0]
+		else: 
+			print('not enough points with the filter {0}'.format(filt))
+			return np.nan,np.nan ,np.nan             
+	if (t>np.max(T))|(t<np.min(T)):
+		print('outside of valid region for interpolation')
+		return np.nan,np.nan ,np.nan  
+	else:     
+		i1 = np.argwhere(t>T)[-1]
+		i2 = np.argwhere(t>T)[-1]+1
+		t1 = T[i1]
+		t2 = T[i2]
+		m1 = mag[i1]
+		m2 = mag[i2]
+		m1_err = magerr[i1]
+		m2_err = magerr[i2]
+		a = (t2  - t)/(t2-t1)
+		b = (t-t1)/(t2-t1)
+		m = a*m1 + b*m2
+		m_err = np.sqrt(a**2*m1_err**2 + b**2*m2_err**2)
+		if t2-t1> 0.0135+(1e9)*t/3e10:
+			print('warning: dt>R/C')
+		#if t2 - t1 > 5:
+		#    print('warning: dt > {0} days'.format(t_max))
+		if min((t2  - t),(t-t1)) > t_max:
+			print('maximum time diff > {0} days. Returning nan'.format(t_max))
+			return np.nan,np.nan ,np.nan  
+		return m[0],m_err[0],(t2-t1)[0]
+
+def color_curve(dat, filt, filt2,tt = '', tmax = 10, tmax_inter = 3):
+	
+	dat.sort('t_rest')
+	time = np.unique(np.round(2*dat['t_rest'])/2)
+	#tt = 2
+	if tt=='':
+		tt = dat['t_rest'][dat['filter']==filt]+0.01
+		tt = tt[tt<tmax]
+
+	if len(tt)==0:
+		pass
+	f1     =  np.array(list(map(lambda t: get_inter_mag(t, dat, filt,t_max = tmax_inter)[0],tt)))
+	f1err  =  np.array(list(map(lambda t: get_inter_mag(t, dat, filt,t_max = tmax_inter)[1],tt)))
+	f2    =  np.array(list(map(lambda t: get_inter_mag(t, dat, filt2,t_max = tmax_inter)[0],tt)))
+	f2err =  np.array(list(map(lambda t: get_inter_mag(t, dat, filt2,t_max = tmax_inter)[1],tt)))
+	x = f1 - f2
+	xerr = np.sqrt(f1err**2+ f2err**2)
+	tt = np.array(tt)
+	#plt.errorbar(x,y,xerr = xerr, yerr = yerr, **kwargs)
+	return tt, x, xerr
+
+
+
+
 
 
 

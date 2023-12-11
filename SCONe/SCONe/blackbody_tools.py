@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 from astropy import constants 
 import os
 import sys
-#from PhotoUtils import *
+from SCONe.PhotoUtils import *
 from extinction import ccm89,calzetti00, apply
 from scipy.optimize  import minimize,curve_fit
 import tqdm
@@ -145,10 +145,10 @@ def fit_bb_sequence(time,data_full,data_full_e,EBV=0,Ebv_MW=0,R_v=3.1,plot_sed=0
 
 
 
-def generate_bb_mag(T_array,filt,r = 1e14, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW'):
+def generate_bb_mag(T_array,filt,dic_transmission,r = 1e14, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW'):
 	v = 67.4*d/3.08e24
 	z = v/300000
-	Trans  = filter_transmission[filt]
+	Trans  = dic_transmission[filt]
 	lam  = np.linspace(1000,20000,1901)
 	
 	m_array = []
@@ -220,13 +220,40 @@ def L_BB(tday, L_break,t_break_days,t_tr_day):
 	L = (t_tilda**(-4/3)+t_tilda**(-0.172)*f_corr_SW(tday,t_tr_day))
 	L = L_break*L
 	return L
+@njit
+def L_SW(tday, L_break,t_break_days,t_tr_day):
+	t_tilda = tday/t_break_days #same units
+	L = (t_tilda**(-0.172))*f_corr_SW(tday,t_tr_day)
+	L = L_break*L
+	return L
 
+@njit
+def L_SW2(tday, L_break,t_break_days,t_tr_day):
+	t_tilda = tday/t_break_days #same units
+	L = (t_tilda**(-0.172))*f_corr_SW(tday,t_tr_day)
+	L = L_break*L
+	return L
+@njit
+def L_SW(tday,v85,fM,k34,R13 ,t_tr_day):
+	t_tilda = tday #same units
+	A = 0.94
+	alpha = 0.8
+	a = 1.67
+	f_corr = A*np.exp(-(a*tday/t_tr_day)**alpha) 
+	L = (t_tilda**(-0.172))*f_corr
+	L_break = 2e42*((v85/fM/k34)**(-0.086))*(v85**2*R13/k34)
+	L = L_break*L
+	return L
 @njit
 def T_color_bb(tday, T_break,t_break_days):
 	t_tilda = tday/t_break_days #same units
 	T = T_break*np.minimum(0.97*t_tilda**(-1/3), t_tilda**(-0.45))
 	return  T
-
+@njit
+def T_color_SW(tday, T_break,t_break_days):
+	t_tilda = tday/t_break_days #same units
+	T = T_break*t_tilda**(-0.45)
+	return  T
 
 @njit
 def f_corr_SW(tday,t_tr_day):
@@ -257,6 +284,19 @@ def bo_params_from_phys(fM,vstar85,R13,k034=1):
 	beta_bo = 0.033039*fM**0.129356*vstar85**1.12936*k034**0.129356/R13**0.258713
 	rho_bo9 = 1.1997*fM**0.322386/R13**1.64477/vstar85**0.677614/k034**0.677614
 	return beta_bo,rho_bo9
+def Lbo_energy_from_phys(fM,vstar85,R13,k034=1):
+	beta_bo,rho_bo9 = bo_params_from_phys(fM,vstar85,R13,k034=k034)
+	vbo9 = beta_bo*29979245800/1e9
+
+	Ebo = 2.2e47*R13**2*vbo9*k034**(-1) #erg
+	tbo = 90*k034**(-1)*rho_bo9**(-1)*R13**(-1)*vbo9**(-2) #s
+	t_light = R13*1e13/29979245800
+	tbo = max(tbo,t_light)
+	L_bo = Ebo/tbo #erg/s
+	L_inf = 0.33*4*np.pi*(R13*1e13)**2*(rho_bo9*1e-9)*( beta_bo*29979245800)**3 #erg/s
+	log_hnu_peak = 1.4+vbo9**0.5+(0.25-0.05*vbo9**0.5)*np.log10(rho_bo9)
+	Tbo = (10**log_hnu_peak)/3
+	return Ebo,tbo,L_bo,L_inf,Tbo
 
 
 def phys_params_from_bo(rho_bo9,beta_bo,R13,k034=1,n=3/2,beta1 = 0.1909):
@@ -349,11 +389,29 @@ def L_nu_new_formula(tday, nu_eV,R13,v85,fM,Menv,k34):
 	L_bb = L_BB(tday, L_break_42_5erg,t_break_days,t_tr_day)*10**(42.5)
 	if (nu_eV < 3.5*T_col): #&(nu_eV < 6)
 		L_eps = L_nu_eps(tday, nu_eV,R13,k34,t_break_days , T_break_5eV, L_break_42_5erg,t_tr_day)
-		L_nu = L_eps
+		T_col_mod = 0.85*T_col
+		L_bb_nu = L_bb*(np.pi)*B_nu(nu_eV,T_col_mod)/(sigma_sb*(T_col_mod*eV2K)**4)
+		L_nu = (L_eps**(-5)+L_bb_nu**(-5))**(-0.2)
 	elif (nu_eV >= 3.5*T_col):
 		T_col_mod = 0.85*(R13/tday)**(0.13)*T_col
 		L_nu = 1.2*L_bb*(np.pi)*B_nu(nu_eV,T_col_mod)/(sigma_sb*(T_col_mod*eV2K)**4)
 	return L_nu
+#@njit
+#def L_nu_new_formula(tday, nu_eV,R13,v85,fM,Menv,k34):
+#	t_trans , T_trans, L_trans,t_tr_day =break_params_new(R13, v85,fM,Menv,k34)
+#	T_break_5eV = T_trans/5
+#	t_break_days = t_trans/24
+#	L_break_42_5erg = L_trans/10**42.5
+#	T_col =  T_color_bb(tday, T_break_5eV,t_break_days)*5
+#	L_bb = L_BB(tday, L_break_42_5erg,t_break_days,t_tr_day)*10**(42.5)
+#	if (nu_eV < 3.5*T_col): #&(nu_eV < 6)
+#		L_eps = L_nu_eps(tday, nu_eV,R13,k34,t_break_days , T_break_5eV, L_break_42_5erg,t_tr_day)
+#		L_nu = L_eps
+#	elif (nu_eV >= 3.5*T_col):
+#		T_col_mod = 0.85*(R13/tday)**(0.13)*T_col
+#		L_nu = 1.2*L_bb*(np.pi)*B_nu(nu_eV,T_col_mod)/(sigma_sb*(T_col_mod*eV2K)**4)
+#	return L_nu
+
 
 
 @njit                           
@@ -399,17 +457,29 @@ def Lnu_eps_reduced(nu_eV,T_col,L_bb):
 
 @njit
 def Lnu_LT(nu_eV,T_col,L_bb):
-	if (nu_eV < 3*T_col):#&(nu_eV < 6):
+	if (nu_eV < 3.5*T_col):#&(nu_eV < 6):
 		L_eps = Lnu_eps_reduced(nu_eV,T_col,L_bb)
 		L_nu = L_eps	
-	elif (nu_eV > 3*T_col):
+	elif (nu_eV > 3.5*T_col):
 		#T_col_mod = 0.69*R13**(0.06)*T_col
 		L_bb425 = L_bb/10**42.5
 		T_col5 = T_col/5
-		T_col_mod = 1.11*L_bb425**0.03*(T_col5)**0.18
-		L_nu = L_bb*(np.pi)*B_nu(nu_eV,T_col_mod)/(sigma_sb*(T_col_mod*eV2K)**4)
+		T_col_mod = 1.11*L_bb425**0.03*(T_col5)**0.18*T_col
+		L_nu = 1.2*L_bb*(np.pi)*B_nu(nu_eV,T_col_mod)/(sigma_sb*(T_col_mod*eV2K)**4)
 	return L_nu
 
+#@njit
+#def Lnu_LT(nu_eV,T_col,L_bb):
+#	if (nu_eV < 3*T_col):#&(nu_eV < 6):
+#		L_eps = Lnu_eps_reduced(nu_eV,T_col,L_bb)
+#		L_nu = L_eps	
+#	elif (nu_eV > 3*T_col):
+#		#T_col_mod = 0.69*R13**(0.06)*T_col
+#		L_bb425 = L_bb/10**42.5
+#		T_col5 = T_col/5
+#		T_col_mod = 1.11*L_bb425**0.03*(T_col5)**0.18
+#		L_nu = L_bb*(np.pi)*B_nu(nu_eV,T_col_mod)/(sigma_sb*(T_col_mod*eV2K)**4)
+#	return L_nu
 @njit                           
 def L_nu_LT(tday, nu_eV,R13,v85,fM,Menv,k34):
 	t_trans , T_trans, L_trans,t_tr_day =break_params_new(R13, v85,fM,Menv,k34)
@@ -420,7 +490,6 @@ def L_nu_LT(tday, nu_eV,R13,v85,fM,Menv,k34):
 	T_col =  T_color_bb(tday, T_break_5eV,t_break_days)*5
 	L_nu = Lnu_LT(nu_eV,T_col,L_bb)
 	return L_nu
-
 
 @njit
 def L_nu_g_MSW(tday, nu_eV,R13,v85,fM,Menv,k34):
@@ -727,7 +796,7 @@ class model_freq_dep_SC(object):
 				,'Rv':3.1
 				,'LAW':'MW'
 				,'UV_sup':False
-				,'reduced':True
+				,'reduced':False
 				,'distance':3.08e19
 				,'validity':'all'}                            
 		inputs.update(model_kwargs)
@@ -895,6 +964,185 @@ class model_freq_dep_SC(object):
 
 
 
+
+
+
+class model_SW(object):
+	def __init__(self,R13,v85,fM,Menv,t0,k34,filter_transmission = None,distance = 3.08e19,ebv = 0,Rv = 3.1, LAW = 'MW'):
+		self.ebv = ebv
+		self.Rv = Rv
+		self.distance = distance
+		self.LAW  = LAW
+		self.R13  = R13
+		self.v85  = v85
+		self.fM   = fM
+		self.Menv = Menv
+		self.k34  = k34
+		self.t0 = t0
+		t_break_hrs,T_break_eV,L_break,t_tr_day =  break_params_new(R13, v85,fM,Menv,k34)
+		self.L_break       = L_break
+		self.t_break_days  = t_break_hrs/24
+		self.t_tr_day      = t_tr_day
+		self.T_break       = T_break_eV/k_B_eVK
+		t_down,t_up = validity2(R13, v85,fM,k34,Menv)
+		self.t_down = t_down
+		self.t_up   = t_up
+		self.filter_transmission = filter_transmission
+	def T_evolution(self,time): 
+		time = time.flatten()
+		T_break = self.T_break
+		t_break_days = self.t_break_days
+		T = T_color_SW(time, T_break,t_break_days)
+		return T
+	def L_evolution(self, time):
+		time = time.flatten()
+		t_break_days = self.t_break_days
+		L_break = self.L_break
+		t_tr_day = self.t_tr_day
+		L_evo = L_BB(time, L_break,t_break_days,t_tr_day)
+		return L_evo  
+	def R_evolution(self,time): 
+		time = time.flatten()
+		Tevo = self.T_evolution(time)
+		Levo = self.L_evolution(time)
+		R = np.sqrt(Levo/(4*np.pi*sigma_sb*(Tevo)**4))
+		return R
+	def mags(self,time,filt_list): 
+		m_array={}
+		for filt in filt_list:
+			R_evo = self.R_evolution(time)
+			T_evo = self.T_evolution(time)
+			mag = generate_cooling_mag_single(T_evo, R_evo, self.filter_transmission[filt],d = self.distance, Rv=self.Rv, EBV = self.ebv,EBV_MW = 0, LAW = self.LAW)
+			m_array[filt] = mag
+		return m_array
+	def mags_single(self,time,filt): 
+		#m_array = generate_SC_mag_single(time,self.R13,self.v85,self.fM,self.k34,self.Menv,filt, self.filter_transmission[filt]
+		#							, d =  self.distance, Rv=self.Rv, EBV = self.ebv
+		#  							,EBV_MW = 0, LAW = self.LAW)
+		R_evo = self.R_evolution(time)
+		T_evo = self.T_evolution(time)
+		m_array = generate_cooling_mag_single(T_evo, R_evo,self.filter_transmission[filt],d = self.distance, Rv=self.Rv, EBV = self.ebv,EBV_MW = 0, LAW = self.LAW)
+
+		return m_array    	
+	def flux(self,time,lam): 
+		f_array = generate_MW_flux(time,lam,self.R13,self.v85,self.fM,self.k34,self.Menv
+									, d =  self.distance, Rv=self.Rv, EBV = self.ebv
+									,EBV_MW = 0, LAW = self.LAW,UV_sup = False,reduced = False, old_form = False, gray = True)
+
+		return f_array 
+	def likelihood(self,dat,sys_err = 0.05,nparams = 7):
+		t0 = self.t0 
+		ebv = self.ebv
+		Rv = self.Rv
+		LAW = self.LAW
+		d = self.distance
+		t_down  = self.t_down 
+		t_up    = self.t_up   
+		dat = dat[(dat['t_rest']>t_down)&(dat['t_rest']<t_up)]
+		filt_list = np.unique(dat['filter'])
+		chi2_dic = {}
+		dof = 0
+		chi_tot = 0
+		N_band = []
+		for filt in filt_list:
+			dat_filt = dat[dat['filter']==filt]
+			time = dat_filt['t_rest']-t0
+			m_array = self.mags(time,filt_list = [filt])
+			mag = m_array[filt]
+			mag_obs = dat_filt['absmag']
+			mag_err = dat_filt['AB_MAG_ERR'] + sys_err
+			c2 = chi_sq(mag_obs,mag_err, mag)
+			N = len(c2)
+			chi2_dic[filt] = c2
+			dof = dof+N
+			chi_tot = chi_tot +np.sum(chi2_dic[filt])
+		dof = dof - nparams
+		
+		rchi2 = chi_tot/dof
+			
+		if chi_tot == 0:
+			logprob = -np.inf
+		elif dof <= 0:
+			logprob = -np.inf
+		else:
+			logprob = log_chi_sq_pdf(chi_tot, dof)
+		if np.isnan(logprob):
+			import ipdb; ipdb.set_trace()
+		return logprob, chi_tot, dof
+	def likelihood_cov(self,dat,inv_cov,sys_err = 0,nparams = 7):
+		t0 = self.t0 
+		ebv = self.ebv
+		Rv = self.Rv
+		LAW = self.LAW
+		d = self.distance
+		t_down  = self.t_down 
+		t_up    = self.t_up   
+		cond_valid = (dat['t_rest']-t0>t_down)&(dat['t_rest']-t0<t_up)
+		args_valid = np.argwhere(cond_valid).flatten()
+		if np.sum(cond_valid) == 0:
+			chi_tot = 0
+			logprob = -np.inf
+			dof = -1
+			return logprob, chi_tot, dof
+		inds = [np.min(args_valid),np.max(args_valid)+1]
+
+		dat = dat[args_valid]
+		#_,dat_res = compute_resid(dat.copy(),self)
+		dof = len(dat)
+		filt_list = np.unique(dat['filter'])
+		delta = np.zeros(dof,)
+		for filt in filt_list:
+			cond_filt = dat['filter']==filt
+			args_filt = np.argwhere(cond_filt).flatten()
+			dat_filt = dat[args_filt]
+			time = dat_filt['t_rest']-t0
+			mag = dat['absmag'][args_filt]
+			mags =   self.mags_single(time,filt=filt)
+			res = np.array(mag - mags)
+			delta[cond_filt] = res
+		#cov = cov[inds[0]:inds[1],inds[0]:inds[1]]
+		#inv_cov = np.linalg.inv(cov)
+		inv_cov = inv_cov[inds[0]:inds[1],inds[0]:inds[1]]
+		#prod = np.dot(delta,inv_cov)
+		#chi_tot = np.dot(prod,delta)
+		chi_tot = delta @ inv_cov @ delta
+		dof = dof - nparams
+		rchi2 = chi_tot/dof
+		if chi_tot == 0:
+			logprob = -np.inf
+		elif dof <= 0:
+			logprob = -np.inf
+		else:
+			#prob = scipy.stats.chi2.pdf(chi_tot, dof)
+			#prob = float(prob)
+			logprob = log_chi_sq_pdf(chi_tot, dof)
+		if np.isnan(logprob):
+			import ipdb; ipdb.set_trace()
+		#logprob = np.log(prob)
+		return logprob, chi_tot, dof
+	def likelihood_bb(self,dat_bb,sys_err = 0.05,nparams = 10):
+		t0 = self.t0 
+		dof = 0
+		chi_tot = 0
+		
+		time = dat_bb['t_rest']-t0
+		L_evo = self.L_evolution(time)
+		T_evo = self.T_evolution(time)
+		err_L = np.sqrt((dat_bb['L_up']-dat_bb['L'])**2 + (sys_err*dat_bb['L'])**2)
+		err_T = np.sqrt((dat_bb['T_up']-dat_bb['T'])**2 + (sys_err*dat_bb['T'])**2)
+
+		c2_L = chi_sq(dat_bb['L'],err_L, L_evo)
+		c2_T = chi_sq(dat_bb['T'],err_T, T_evo)
+
+		N = len(c2_L) + len(c2_T)
+		chi_tot = np.sum(c2_L) +np.sum(c2_T) 
+		dof =N
+		dof = dof - nparams
+		
+		rchi2 = chi_tot/dof
+
+		logprob = -chi_tot
+		return logprob, chi_tot, dof
 
 
 
@@ -1076,6 +1324,13 @@ class model_SC(object):
 
 		logprob = -chi_tot
 		return logprob, chi_tot, dof
+
+
+
+
+
+
+
 def generate_cooling_mag(T_array, R_array ,filt,z=0, d = 3.08e26, Rv=3.1, EBV = 0,EBV_MW = 0, LAW = 'MW',H0 = 67.4):
 	if len(T_array)!=len(R_array):
 		raise Exception('R and T arrays have to be the same length') 
@@ -1278,16 +1533,20 @@ def get_sim_params(sn_inds,**kwargs):
 						  ,key_dic['Mcore'][sn_ind]
 						  ,key_dic['Menv'][sn_ind]
 						  ,key_dic['E_inj'][sn_ind]
-						  ,key_dic['frhoM'][sn_ind],ebv,key_dic['names'][sn_ind]]
+						  ,key_dic['frhoM'][sn_ind]
+						  #,key_dic['beta_bo'][sn_ind]
+						  #,key_dic['rho_bo'][sn_ind]
+						  ,ebv
+						  ,key_dic['names'][sn_ind]]
 		else:
 			params[sn]  = [key_dic['v_shstar'][sn_ind]
-						  ,key_dic['E_env'][sn_ind]
-						  ,key_dic['Rstar'][sn_ind]
-						  ,key_dic['Mcore'][sn_ind]
-						  ,key_dic['Menv'][sn_ind]
-						  ,key_dic['E_inj'][sn_ind]
-						  ,key_dic['frhoM' ][sn_ind]
-						  ,key_dic['names' ][sn_ind]]      
+						  ,key_dic['E_env'   ][sn_ind]
+						  ,key_dic['Rstar'   ][sn_ind]
+						  ,key_dic['Mcore'   ][sn_ind]
+						  ,key_dic['Menv'    ][sn_ind]
+						  ,key_dic['E_inj'   ][sn_ind]
+						  ,key_dic['frhoM'   ][sn_ind]
+						  ,key_dic['names'   ][sn_ind]]      
 	return params
 
 def construct_sim(data,mat, d = 3.0856e+19, t0_vec =[0] ):
@@ -1799,7 +2058,8 @@ def plot_SED_data(t,data,filter_transmission,c_band = {},obj_mod = '', ax = plt.
 		piv_wl = data['piv_wl'][data['filter']==filt][0]
 		Tran = filter_transmission[filt]    
 		w_eff = np.trapz(Tran[:,1],x = Tran[:,0])/np.max(Tran[:,1])
-		ax.errorbar(piv_wl,f,xerr = w_eff, yerr = ferr, fmt = 'o', color = c_band[filt])
+		#import ipdb; ipdb.set_trace()
+		ax.errorbar(piv_wl,f,xerr = w_eff, yerr = ferr, marker = 'o', color = c_band[filt])
 		if obj_mod!='':
 			mags_mod = obj.mags_single([t],filt)
 			flux_mod = maggie2cgs(10**(-0.4*mags_mod[filt]))
@@ -1887,7 +2147,7 @@ def plot_SED_sequence(data,samples,weights,d_mpc,filter_transmission,c_band = {}
 	plt.text(0.4,0.9,sn,transform = plt.gcf().transFigure,fontsize = 18)
 
 	plt.subplots_adjust(hspace=0.15,wspace=0.2)
-	plt.text(0.05,0.7, 'Flux [$erg\ s^{-1}\ cm^{-2}\ \AA^{-1}$]',transform = plt.gcf().transFigure,rotation = 'vertical',fontsize = 24)
+	plt.text(0.05,0.2, 'Flux [$erg\ s^{-1}\ cm^{-2}\ \AA^{-1}$]',transform = plt.gcf().transFigure,rotation = 'vertical',fontsize = 24)
 	plt.text(0.45,0.05, 'Wavelength [$\AA$]',transform = plt.gcf().transFigure,rotation = 'horizontal',fontsize = 24)
 	#plt.legend(loc = 'lower left',bbox_to_anchor = (1.13,-0.1,1.3,2),mode = 'expand',bbox_transform = plt.gca().transAxes,fontsize = 24)
 	if save_path!='':
@@ -2256,7 +2516,7 @@ def plot_lc_piro(dat,params, c_band, lab_band, offset, kappa = 0.07 ,ebv = 0, Rv
 
 	plt.gca().invert_yaxis()
 	plt.xlabel('Rest-frame days since estimated explosion',fontsize = 14)
-	plt.ylabel('M (AB mag)',fontsize = 14)
+	plt.ylabel('M (AB mag) + offset',fontsize = 14)
 	pass
 
 
@@ -2402,7 +2662,10 @@ def plot_lc_with_model(dat,obj,t0, c_band, lab_band, offset, fig = 'create', ax 
 	mags =   obj.mags(time_2,filt_list=filt_list)
 
 	for i,band in enumerate(filt_list):
-		ax.plot(time_2,mags[band]-offset[band],color =c_band[band] ,alpha = 0.5,ls = '-.',linewidth = 3, label = '')
+		try:
+			ax.plot(time_2,mags[band]-offset[band],color =c_band[band] ,alpha = 0.5,ls = '-.',linewidth = 3, label = '')
+		except:
+			import ipdb;ipdb.set_trace()
 
 		ax.errorbar(dat['t_rest'][cond_dic[band]]-t0, dat['absmag'][cond_dic[band]]-offset[band],dat['AB_MAG_ERR'][cond_dic[band]],marker = '*', ls = '',color = c_band[band], markersize = 10, label = '')
 		if np.sign(-offset[band]) == 1:
@@ -2412,13 +2675,13 @@ def plot_lc_with_model(dat,obj,t0, c_band, lab_band, offset, fig = 'create', ax 
 		elif np.sign(-offset[band]) == 0:
 			string = lab_band[band]
 		if lab_band[band]!='':
-			ax.text(xlab_pos,np.mean(dat['absmag'][cond_dic[band]]-offset[band]),string, color =c_band[band] ) 
+			ax.text(xlab_pos,np.mean(mags[band]-offset[band]),string, color =c_band[band] ) 
 			
 	ax.set_xlim((-2,1.1*np.max(time_2)))
 
 	ax.invert_yaxis()
 	ax.set_xlabel('Rest-frame days since estimated explosion',fontsize = 14)
-	ax.set_ylabel('M (AB mag)',fontsize = 14)
+	ax.set_ylabel('M (AB mag) + offset',fontsize = 14)
 	return fig,ax
 
 
@@ -2445,7 +2708,7 @@ def plot_lc_2model(dat, obj1, obj2, c_band, lab_band, offset, fig = 'create', ax
 	for i,band in enumerate(filt_list):
 		ax.plot(time_2+obj1.t0,mags[band]-offset[band],color =c_band[band] ,alpha = 0.5,ls = '-.',linewidth = 3, label = '')
 		ax.plot(time_2p+obj2.t0,mags2[band]-offset[band],color =c_band[band] ,alpha = 0.5,ls = '-',linewidth = 3, label = '')
-
+		import ipdb; ipdb.set_trace()
 		ax.errorbar(dat['t_rest'][cond_dic[band]], dat['absmag'][cond_dic[band]]-offset[band],dat['AB_MAG_ERR'][cond_dic[band]],marker = '*', ls = '',color = c_band[band], markersize = 10, label = '')
 		if np.sign(-offset[band]) == 1:
 			string = lab_band[band]+' +{0}'.format(-offset[band])
@@ -2460,7 +2723,7 @@ def plot_lc_2model(dat, obj1, obj2, c_band, lab_band, offset, fig = 'create', ax
 
 	ax.invert_yaxis()
 	ax.set_xlabel('Rest-frame days since estimated explosion',fontsize = 14)
-	ax.set_ylabel('M (AB mag)',fontsize = 14)
+	ax.set_ylabel('M (AB mag) + offset',fontsize = 14)
 	return fig,ax
 
 
@@ -2482,7 +2745,7 @@ def plot_lc_model_only(obj,filt_list,tmin,tmax,t0, c_band, lab_band,offset,valid
 	if fig == 'create':
 		plt.gca().invert_yaxis()
 	plt.xlabel('Rest-frame days since estimated explosion',fontsize = 14)
-	plt.ylabel('M (AB mag)',fontsize = 14)
+	plt.ylabel('M (AB mag) + offset',fontsize = 14)
 	#plt.xscale('log')
 	plt.legend()
 	return fig,ax
@@ -2526,7 +2789,6 @@ def plot_lc(dat,t0, c_band, lab_band, offset, fig = 'create', ax = None,figsize 
 			ax.text(lab_x_loc,np.nanmean(dat['absmag'][cond_dic[band]&(dat['t_rest']<30)]-offset[band]),string, color =c_band[band], fontsize = fontsize ) 
 	ax.invert_yaxis()
 	ax.set_xlabel('Rest-frame days since estimated explosion',fontsize = fontsize)
-	ax.set_ylabel('M (AB mag)',fontsize = fontsize)
+	ax.set_ylabel('M (AB mag) + offset',fontsize = fontsize)
 	return fig,ax
-
 
