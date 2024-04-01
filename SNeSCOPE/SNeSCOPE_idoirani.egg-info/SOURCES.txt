@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+SNeSCOPE/PhotoUtils.py
+SNeSCOPE/__init__.py
+SNeSCOPE/blackbody_tools.py
+SNeSCOPE_idoirani.egg-info/PKG-INFO
+SNeSCOPE_idoirani.egg-info/SOURCES.txt
+SNeSCOPE_idoirani.egg-info/dependency_links.txt
+SNeSCOPE_idoirani.egg-info/requires.txt
+SNeSCOPE_idoirani.egg-info/top_level.txt
