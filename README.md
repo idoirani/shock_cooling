@@ -36,7 +36,18 @@ python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
 
 ## Credit
 
-If you are using SOPRANOS, please cite the following papers: 
+
+## Credit
+
+If you are using SNeSCOPE, please cite the following papers: 
+
+light curve fitter: Irani et al 2024, "the early UV light curves of Type II SNe"
+analytic model for T,L evolution: Morag et al 2023 "Shock cooling emission from explosions of red super-giants: I. A numerically calibrated analytic model"
+deviations from blackbody: Morag et al 2024, "Shock cooling emission from explosions of red super-giants: II. An analytic model of deviations from blackbody emission"
+variable validity domain: Soumagnac et al 2020 "SN 2018fif: The Explosion of a Large Red Supergiant Discovered in Its Infancy by the Zwicky Transient Facility"
+If using Piro 2021 "Shock Cooling Emission from Extended Material Revisited"
+
+
 
 
 
