@@ -1,6 +1,0 @@
-numpy
-matplotlib
-dynesty
-scipy
-numba
-astropy
