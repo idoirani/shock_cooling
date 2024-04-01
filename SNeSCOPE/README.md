@@ -36,9 +36,6 @@ python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
 
 ## Credit
 
-
-## Credit
-
 If you are using SNeSCOPE, please cite the following papers: 
 
 light curve fitter: Irani et al 2024, "the early UV light curves of Type II SNe"
