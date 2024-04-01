@@ -1,26 +1,19 @@
-# SNeSCOPE - Shock Cooling Optimization for superNovae
+# SNeSCOPE - SuperNovae Shock Cooling Observations Parameter Estimator
 ## Documentation
-SNeSCOPE is a python package for modeling supernova light curves using the analytic models of Morag Sapir and Waxman (2022). 
+SNeSCOPE is a python package for modeling supernova light curves using the analytic models of Morag et al 2023 and Morag et al 2024. 
 
 ## Installation
 
 
 
-install package with 
-pip install SNeSCOPE
-
-or 
-
-git clone and then 
+to install, git clone and then 
 python setup.py intsall
 
-if you want to use the pre-existing script, able to run from the command line, add to your .bashrc file (no spaces):
+To run pre exsiting script, modify the parameter files (e.g., see in tests). You will modify paths, SN parameters (e.g., distance, redshift, extinction), package options, and the photometric filters used while observing (an extensive folder is added, but you can always add more. Make sure to update the plotting parameters accordingly). 
 
-alias fit_bb_extinction='python  /path/to/scipts/fit_bb_extinction.py'
-alias fit_SC='python  /path/to/scipts/fit_SC.py'
+Then run the script, e.g. 
 
-and then run from the command line
-source .bashrc
+python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
 
 
 ### Package contents
@@ -43,6 +36,9 @@ source .bashrc
 
 ## Credit
 
+
+## Credit
+
 If you are using SNeSCOPE, please cite the following papers: 
 
 light curve fitter: Irani et al 2024, "the early UV light curves of Type II SNe"
@@ -50,5 +46,8 @@ analytic model for T,L evolution: Morag et al 2023 "Shock cooling emission from 
 deviations from blackbody: Morag et al 2024, "Shock cooling emission from explosions of red super-giants: II. An analytic model of deviations from blackbody emission"
 variable validity domain: Soumagnac et al 2020 "SN 2018fif: The Explosion of a Large Red Supergiant Discovered in Its Infancy by the Zwicky Transient Facility"
 If using Piro 2021 "Shock Cooling Emission from Extended Material Revisited"
+
+
+
 
 
