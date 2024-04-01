@@ -30,7 +30,7 @@ rad_high=3e15
 rad_low=4e12
 temp_high=5e5
 temp_low=1000
-
+sep = os.sep
 # constants 
 c_cgs = constants.c.cgs.value
 k_B_eVK = constants.k_B.to('eV/K').value
@@ -1394,7 +1394,6 @@ def construct_covariance_MG_v2(data,path_mat,path_key,dic_transmission,model_fun
 	mat, key_mat, key_dic = get_sims(path_mat,path_key)
 	global filter_transmission 
 	filter_transmission = dic_transmission
-
 	print('Constructing SN synthetic data from MG simulations')
 	Data_filters2 = construct_sim(data,mat,t0_vec = t0_vec)
 	if valid_inds ==[]:
@@ -1614,13 +1613,14 @@ def construct_sim(data,mat, d = 3.0856e+19, t0_vec =[0] ):
 	return Data_filters
 
 def get_sims(path_mat,path_key):
+	
 	import scipy.io
 	mat = scipy.io.loadmat(path_mat)
 	mat = mat['SEDs_from_MG'][0]
 	key_mat = scipy.io.loadmat(path_key)
 	key_mat = key_mat['key'][0]
 	
-	if path_key.split('/')[-1]=='RSG_SED_batch1_key.mat':
+	if path_key.split(sep)[-1]=='RSG_SED_batch1_key.mat':
 		key_dic = {}
 		key_dic['names'] = key_mat[0][0][0]
 		key_dic['v_shstar'] = key_mat[0][1][0]
@@ -1633,7 +1633,7 @@ def get_sims(path_mat,path_key):
 		key_dic['beta_bo'] = key_mat[0][8][0]
 		key_dic['rho_bo'] = key_mat[0][9][0]/1e-9
 		key_dic['frhoM']    =     key_mat[0][2][0]*(key_dic['Mcore']+key_dic['Menv'] )
-	elif path_key.split('/')[-1]=='RSG_batch_R03_20_removed_lines_Z1_key.mat':
+	elif path_key.split(sep)[-1]=='RSG_batch_R03_20_removed_lines_Z1_key.mat':
 		key_dic = {}
 		key_dic['names']   =    key_mat[0][0][0]
 		key_dic['v_shstar']= key_mat[0][1][0]
@@ -1649,7 +1649,7 @@ def get_sims(path_mat,path_key):
 		key_dic['rho_bo']  =   key_mat[0][10][0]/1e-9
 		key_dic['frhoM']    =     key_mat[0][2][0]*(key_dic['Mcore']+key_dic['Menv'] )/constants.M_sun.cgs.value
 	
-	elif path_key.split('/')[-1] == 'Full_batch_12_2022_Z_1_01_key.mat':
+	elif path_key.split(sep)[-1] == 'Full_batch_12_2022_Z_1_01_key.mat':
 		key_dic = {}
 		key_dic['names']   =    key_mat[0][0][0]
 		key_dic['v_shstar']= key_mat[0][1][0]
@@ -1772,7 +1772,7 @@ def fit_freq_dep_SC(data, dic_transmission,k34 = 1, plot_corner = True,sys_err =
 		if Rv != 'fit':
 			priors = priors[0:6]
 	else:
-		priors = priors[0:5]
+		priors = priors[0:5]	
 	if inv_cov =='':
 		 inv_cov=  np.diagflat(1/(np.array(data['AB_MAG_ERR'])**2+ sys_err**2))
 
@@ -2124,12 +2124,17 @@ def plot_SED_sequence(data,samples,weights,d_mpc,filter_transmission,c_band = {}
 	t1eV = t_log[T_eV<1][0]
 	t15eV = t_log[T_eV<1.5][0]
 	t13eV = t_log[T_eV<1.3][0]
-	t_ZTF = data[data['instrument'] == 'ZTF+P48']['t_rest'][0]
-	t_UV_first = data[data['instrument'] == 'Swift+UVOT']['t_rest'][0]+0.1
-	t_first =t_ZTF +0.001
-	T_first = obj_best.T_evolution(t_first)[0]/eV2K	
-	T_first_UV = obj_best.T_evolution(t_UV_first)[0]/eV2K	
-	for i,t in enumerate([t_first,t_UV_first,t2eV,t15eV,t13eV,t1eV]):
+	data.sort('t_rest')
+	t_first = data['t_rest'][0]
+	t_first =t_first +0.001
+	if t_first - obj_best.t0 > obj_best.t_down:
+		t_list = [t_first,t2eV,t15eV,t13eV,t1eV]
+	else: 
+		t_list = [t2eV,t15eV,t13eV,t1eV]
+	#t_UV_first = data[data['instrument'] == 'Swift+UVOT']['t_rest'][0]+0.1
+	#T_first = obj_best.T_evolution(t_first)[0]/eV2K	
+	#T_first_UV = obj_best.T_evolution(t_UV_first)[0]/eV2K	
+	for i,t in enumerate(t_list):
 		ax_sed = plt.subplot(2,3,i+1)
 		T =  obj_best.T_evolution(t)[0]/eV2K	
 		plot_SED_data(t ,data,filter_transmission,c_band=c_band,fig = fig_sed, ax = ax_sed)

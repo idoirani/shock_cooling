@@ -2,55 +2,125 @@ import astropy.io.ascii as ascii
 import numpy as np
 from SCONe.blackbody_tools import model_freq_dep_SC, fit_freq_dep_SC,model_SC, fit_SC
 
+import os
+sep = os.sep #OS dependent path separator
 
-path_mat =      './data/Full_batch_12_2022_Z_1_01.mat'
-path_key  =     './data/Full_batch_12_2022_Z_1_01_key.mat'
-path_data =     './tests/ZTF20aaynrrh_detections_ebv_corr.ascii'
-path_dates_sn = './tests/ZTF20aaynrrh_dates.txt'
-path_out =      './output/'
-path_package =  './'
-path_filters =  './Filters/'
-path_scripts =  './scripts/'
-max_t = 10
-min_t = 0
-k34 = 1
-Rv = 3.1
-Rv_fit = False
+# path parameters (change to your local paths))
+path_mat =      f'.{sep}data{sep}RSG_batch_R03_20_removed_lines_Z1.mat'
+path_key  =     f'.{sep}data{sep}RSG_batch_R03_20_removed_lines_Z1_key.mat'
+path_data =     f'.{sep}tests{sep}SN2020jfo_formatted.ascii'
+path_dates_sn = f'.{sep}tests{sep}SN2020jfo_dates.txt'
+path_out =      f'.{sep}output{sep}'
+path_filters =  f'.{sep}Filters{sep}'
+path_scripts =  f'.{sep}scripts{sep}'
+path_results_table = path_out + f'results_table.txt'
+path_fold = path_out
+max_t = 10 #maximum time in days to attempt fitting 
+min_t = 0 #minimum time in days to attempt fitting
+k34 = 1 #opacity in units of 0.34 cm^2/g
+Rv = 3.1 #extinction law
+Rv_fit = False #if True, Rv is a free parameter
 LAW = 'MW' # MW (CCM89, with UV "bump")  or Cal00 (without UV "bump"); both with variable Rv
-sys_err = 0.1
-mode = 'write' ##read|write|replot
-z = 0.005224
-t0_init = 2458975.23
-t_nd = - 3.45
-t_first = 0.47
-plot_BB = True
-d_mpc = 14.7
-dm = 5*np.log10(d_mpc)+25
-sn = 'ZTF20aaynrrh' 
-ebv_host_init = 0 
-results = {}
+sys_err = 0.1 #systematic error in magnitudes, added in quadrature to the photometric errors
+sys_factor = 1.5 #factor by which to multiply the correlated errors. This accounts for the theoretical uncertainty in the model (see further details in Morag et al 2024)
+mode = 'write' ##read|write|read and plot
+z = 0.005224 #redshift
+t0_init = 2458975.23 #initial time of explosion. t0 is a free parameter, but this is the initial guess
+t_nd = - 3.45 #time of non-detection (or, lower prior on t0). Only use if non-detection is constraining
+t_first = 0.47 #first detection time. (upper limit on t0, only use if first detection is clearly a SN point)
+t0_vec =0.75*(np.array([t_nd,0,t_first])-0.03) #evaluate the covariance matrix at these points for t0, added to the reference time of the simulations
+tight_t0 = False #use very narrow priors around t0_init
+
+plot_BB = True #plot the blackbody fits for the best fit parameters
+d_mpc = 14.7 #distance in Mpc
+dm = 5*np.log10(d_mpc)+25 #distance modulus
+sn = 'SN2020jfo'  #name of the SN
+ebv_host_init = 0  # initial guess for host extinction
+results = {} #dictionary to store results
 import pickle
-covar = True
-corner_plot = True
-lc_plot = True
-bb_plot = True 
-show = False
-Rv_fit = False
-modify_BB_MSW = True
+covar = True #if True, use non-diagonal covariance matrix
+corner_plot = True #if True, plot corner plot
+lc_plot = True #if True, plot light curve
+bb_plot = True  
+show = False #if True, show plots
+reduced = False #use reduced formula for SED only using L,T. If False, use full formula (default)
+plot_sed = True #plot SED compared to model in several epochs
+modified_bb = False # currently not implemented 
+time_weighted = False #weigh early times more than late times in the likelihood function
+priors_phys  =        {'R13':np.array([0.1,20]),
+				       'v85':np.array([0.1,4]),
+				       'fM':np.array([0.1,200]),
+				       'Menv':np.array([0.3,30])}
+Ebv_prior = np.array([0,0.25])
+Rv_prior = np.array([2,5])  
 
-Date_col    = 'jd'
-absmag_col  =  'absmag'
-M_err_col   = 'AB_MAG_ERR'
-filter_col  = 'filter'
-flux_col    = 'flux'  
-fluxerr_col = 'fluxerr'
-piv_wl_col  = 'piv_wl'
-inst_col    = 'instrument'
+prior_type = ['log-uniform','log-uniform','log-uniform','log-uniform','uniform','uniform','uniform'] #prior type for each parameter (R13,v85,fM,Menv,t0, ebv, Rv)
+t_tr_prior = 5 # non rectectgular lower prior on t_tr in days, time of envelope transparency. Will be calculated from each model. This parameter is used to elminate models which will push all data points outside the validity. 
 
-model_func = model_freq_dep_SC  
-fit_func = fit_freq_dep_SC
+#data columns - must match the columns in the data file
+Date_col    = 'jd' #column name for date
+M_col  = 'AB_MAG' #column name for magnitude
+absmag_col  =  'absmag' #column name for absolute magnitude
+M_err_col   = 'AB_MAG_ERR' #column name for absolute magnitude error
+filter_col  = 'filter' #column name for filter
+flux_col    = 'flux' #column name for flux
+fluxerr_col = 'fluxerr' #column name for flux error
+piv_wl_col  = 'piv_wl' #column name for pivot wavelength
+inst_col    = 'instrument' #column name for instrument
+
+#model and fit functions
+FD = True #if True, use frequency dependent model and fit functions. If False, use frequency independent model and fit functions. Frequency dependent formula is only tested for Red Supergiant stars (Morag 2024)
+model_func = model_freq_dep_SC  # model_freq_dep_SC == Morag et al 2024.    
 
 
+
+
+
+
+
+#gather all variables up to this point into a dictionary
+params_dic = {}
+params_dic['path_merged'] = path_data
+params_dic['path_dates'] = path_dates_sn
+params_dic['path_mat'] = path_mat
+params_dic['path_key'] = path_key
+params_dic['max_t'] = max_t
+params_dic['min_t'] = min_t
+params_dic['k34'] = k34
+params_dic['Rv'] = Rv
+params_dic['Rv_fit'] = Rv_fit
+params_dic['LAW'] = LAW
+params_dic['sys_err'] = sys_err
+params_dic['mode'] = mode
+params_dic['FD'] = FD
+params_dic['UV_sup'] = False
+params_dic['covar'] = covar
+params_dic['corner_plot'] = corner_plot
+params_dic['lc_plot'] = lc_plot
+params_dic['bb_plot'] = bb_plot
+params_dic['plot_sed'] = plot_sed
+params_dic['show'] = show
+params_dic['reduced'] = reduced
+params_dic['modified_bb'] = modified_bb
+params_dic['time_weighted'] = time_weighted
+params_dic['sys_factor'] = sys_factor
+params_dic['priors_phys'] = priors_phys
+params_dic['t_tr_prior'] = t_tr_prior
+params_dic['tight_t0'] = tight_t0
+params_dic['path_scripts'] = path_scripts
+params_dic['path_out'] = path_out
+params_dic['path_fold'] = path_fold
+params_dic['path_results_table'] = path_results_table
+params_dic['plot_BB'] = plot_BB
+params_dic['d_mpc'] = d_mpc
+params_dic['dm'] = dm
+params_dic['sn'] = sn
+
+
+
+
+
+#filter names, transmission curves, colors, labels, and offsets
 FILTERS =   np.array(['ZTF_g'  
 					 ,'ZTF_r'  
 					 ,'ZTF_i'  

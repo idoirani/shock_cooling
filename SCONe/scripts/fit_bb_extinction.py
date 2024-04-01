@@ -8,14 +8,13 @@ from astropy import constants
 import os
 import sys
 from extinction import ccm89,calzetti00, apply, remove 
-
+sep = os.sep
 #ys.path.insert(1,path_package)
 from SCONe.PhotoUtils import cosmo_dist
 from numba import jit,njit
 ##parameters 
 import argparse
 # parameters 
-Filter_path='/home/idoi/Dropbox/Utils/Filters'
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--data', type=str, help='Path to Data')
 parser.add_argument('--dates', type=str,default='', help='Path to Dates fofr BB fit')
@@ -32,125 +31,9 @@ parser.add_argument('--LAW',default='MW', type=str, help='Host extinction LAW: M
 parser.add_argument('--fit_ex',default=False, type=bool, help='Fit extinction? True/False')
 parser.add_argument('--modify_BB_MSW',default=False, type=str, help='Use the modified blackbody formula described in Morag Sapir and Waxman 2023')
 parser.add_argument('--path_params',default=False, type=str, help='path to parameter file')
+  
+excluded_bands = []
 
-#
-#colors={
-#	'r_sdss'   :'#EA0000'
-#	,'g_sdss'  :'#00BA41'
-#	,'i_sdss'  :'#D3DE00'
-#	,'z_sdss'  :'#7E0600'
-#	,'u_sdss'  :'m#6D00C2'
-#	,'ZTF_r'   :'#EA0000' 
-#	,'ZTF_g'   :'#00BA41' 
-#	,'ZTF_i'   :'#D3DE00' 
-#	,'u_swift' :'#6D00C2'
-#	,'v_swift' :'#00DCA7' 
-#	,'b_swift' :'#1300FF' 
-#	,'UVW2'    :'#060606'
-#	,'UVM2'    :'#FF37DE'   
-#	,'UVW1'    :'#AE0DBB'
-#	,'u_P60'   :'#6D00C2'
-#	,'g_P60'   :'#00BA41'
-#	,'r_P60'   :'#EA0000'
-#	,'i_P60'   :'#D3DE00'
-#	,'LT_u'    :'#6D00C2'
-#	,'LT_g'    :'#00BA41'
-#	,'LT_r'    :'#EA0000'
-#	,'LT_i'    :'#D3DE00'
-#	,'LT_z'    :'#7E0600'
-#	,'NOT_u'    :'#6D00C2'
-#	,'NOT_g'    :'#00BA41'
-#	,'NOT_r'    :'#EA0000'
-#	,'NOT_i'    :'#D3DE00'
-#	,'NOT_z'    :'#7E0600'
-#	,'LCO_u'   :'#6D00C2'
-#	,'LCO_g'   :'#00BA41'
-#	,'LCO_r'   :'#EA0000'
-#	,'LCO_i'   :'#D3DE00'
-#	,'LCO_V'   :'#00DCA7'
-#	,'LCO_B'   :'#1300FF'
-#	,'KAIT_B':'#1300FF'
-#	,'KAIT_V':'#00DCA7'
-#	,'KAIT_R':'#EA0000'
-#	,'KAIT_I':'#D3DE00'
-#	,'KAIT_CLEAR':'#B2607E'
-#	,'Ni_B':'#1300FF'
-#	,'Ni_V':'#00DCA7'
-#	,'Ni_R':'#EA0000'
-#	,'Ni_I':'#D3DE00'
-#	,'Ni_CLEAR':'#B2607E'
-#	,'MMIRS_J':'#755300'
-#	,'MMIRS_H':'#6C7500'
-#	,'MMIRS_Ks':'#6D3D39'}        
-excluded_bands = []#['r_sdss' 
-				 #,'g_sdss'
-				 #,'i_sdss'
-				 #,'z_sdss'
-				 #,'u_sdss'
-				 #,'ztf_r' 
-				 #,'ztf_g' 
-				 #,'ztf_i' ]
-#
-#markers={
-#	'r_sdss'   :'o'
-#	,'g_sdss'  :'o'
-#	,'i_sdss'  :'o'
-#	,'z_sdss'  :'o'
-#	,'u_sdss'  :'o'
-#	,'ZTF_r'   :'s' 
-#	,'ZTF_g'   :'s' 
-#	,'ZTF_i'   :'s' 
-#	,'u_swift' :'p' 
-#	,'v_swift' :'p' 
-#	,'b_swift' :'p' 
-#	,'UVM2'    :'p'
-#	,'UVW2'    :'p'
-#	,'UVW1'    :'p' 
-#	,'u_P60'   :'.'
-#	,'g_P60'   :'.'
-#	,'r_P60'   :'.'
-#	,'i_P60'   :'.'
-#	,'LT_u'    :'^'
-#	,'LT_g'    :'^'
-#	,'LT_r'    :'^'
-#	,'LT_i'    :'^'
-#	,'LT_z'    :'^'
-#	,'NOT_u'    :'P'
-#	,'NOT_g'    :'P'
-#	,'NOT_r'    :'P'
-#	,'NOT_i'    :'P'
-#	,'NOT_z'    :'P'
-#	,'LCO_u'   :'v'
-#	,'LCO_g'   :'v'
-#	,'LCO_r'   :'v'
-#	,'LCO_i'   :'v'
-#	,'LCO_V'   :'v'
-#	,'LCO_B'   :'v'
-#	,'KAIT_B':'P'
-#	,'KAIT_V':'P'
-#	,'KAIT_R':'P'
-#	,'KAIT_I':'P'
-#	,'KAIT_CLEAR':'P'
-#	,'Ni_B':'P'
-#	,'Ni_V':'P'
-#	,'Ni_R':'P'
-#	,'Ni_I':'P'
-#	,'Ni_CLEAR':'P'
-#	,'MMIRS_J':'*'
-#	,'MMIRS_H':'*'
-#	,'MMIRS_Ks':'*'
-#	,'ATLAS_c':'x' 
-#	,'ATLAS_o':'x'  }
-#
-#
-#parser.add_argument('--Date_col'   , type=str, help='Date column in data', default = 'jd')
-#parser.add_argument('--absmag_col' , type=str, help='Absolute magnitude (AB) column in data', default = 'absmag')
-#parser.add_argument('--M_err_col'  , type=str, help='Absolute magnitude error (AB) column in data')
-#parser.add_argument('--filter_col' , type=str, help='Unique filter column in data, corresponding to the parameter file keys in the transmission filter dictionary (instrument column will not be used)', default = 'filter')
-#parser.add_argument('--flux_col'   ,default='flux', type=str, help='f_lambda column in data')
-#parser.add_argument('--fluxerr_col',default='fluxerr', type=str, help='f_lambda error column in data')
-#parser.add_argument('--piv_wl_col' ,default='piv_wl', type=str, help='pivot wavelength column in data')
-#
 from matplotlib import gridspec
 plt.rcParams.update({
   "text.usetex": True,
@@ -181,29 +64,20 @@ if modify_BB_MSW not in ['True','False']:
 modify_BB_MSW = modify_BB_MSW=='True'
 plots = plots=='True'
 write = write=='True'
-#Date_col=args.Date_col
-#M_err_col=args.M_err_col
-#filter_col=args.filter_col
-#absmag_col=args.absmag_col
-#M_err_col=args.M_err_col
-#flux_col   =args.flux_col
-#fluxerr_col = args.fluxerr_col
-#piv_wl_col = args.piv_wl_col
-#
-#
 
-params_name = path_params.split('/')[-1].split('.py')[0]
+
+params_name = path_params.split(sep)[-1].split('.py')[0]
 params_dir = path_params.split(params_name)[0]
 sys.path.append(params_dir) 
 exec("from {0} import *".format(params_name))
 colors = c_band.copy()
-
+Filter_path = path_params
 
 
 plot_lc=plots
 plot_sed=plots
 
-params_name = Path_params.split('/')[-1].split('.py')[0]
+params_name = Path_params.split(sep)[-1].split('.py')[0]
 params_dir = Path_params.split(params_name)[0]
 sys.path.append(params_dir) 
 exec("from {0} import *".format(params_name))
@@ -226,23 +100,7 @@ d=cosmo_distance_cm
 filter_out_interp = ['MMIRS_J','MMIRS_H','MMIRS_Ks']
 
 
-
-#z=0.0641 #19hgp
-#Ebv_MW=0.019#19hgp
-#EBV_host = 0#19hgp
-#first_time= 2458641.6 #19hgp
-#
-#z=0.084 #21csp
-#Ebv_MW=0 #21csp
-#EBV_host = 0 #21csp
-#first_time= 2459255.0 #21csp
-
-
-sys_err = 0.05 # 0.1198
-
-
-# write output? 
-#out_path='/home/idoi/Dropbox/Objects/2021csp/simple_blackbody_fits.ascii'
+sys_err = 0.05 
 
 #include errors?
 include_errors=True
@@ -286,17 +144,7 @@ data['fluxerr'] = np.sqrt(data['fluxerr']**2+(data['flux']*sys_err)**2)
 #data['fluxerr']=np.sqrt(data['fluxerr']**2+0.01*data['flux']**2)  
 if Dates_path!='':
 	dates= np.loadtxt(Dates_path)
-#else: 
-#	uvot = data[data['instrument'] == 'Swift+UVOT']
-#	tt = np.unique(np.round(uvot['t']*2)/2)
-#	ts = np.zeros_like(tt)
-#	ts[0] = np.max(uvot['t'][np.round(uvot['t']*2)/2 == tt[0]])+0.01
-#	for i in range(len(tt)):
-#		ts[i] = np.mean(uvot['t'][np.round(uvot['t']*2)/2 == tt[i]])
-#	ts[-1] = np.min(uvot['t'][np.round(uvot['t']*2)/2 == tt[-1]])-0.01
-#	dates = np.array(ts) +first_time
-##FIT EXTINCTION?
-#
+
 Rv = np.linspace(2,5,10)
 if LAW == 'LMC':
 	Rv = np.linspace(3.41-0.001,3.41+0.001,3)
@@ -430,47 +278,9 @@ def bb_F_reduced(lam_um,T_k,r_bb,EBV = 0, EBV_mw = 0,R_v = 3.1, LAW = 'MW',z=0,d
 	return f_lam
 	
 #
-#
-#lam_um = np.linspace(0.1,10,1000)
-#T = 2e4
-#R= 1e13
-#d = 3.08e26/3
-#t=1e-4*T
-#r=1e10*R/d
-#f1 = 1e-13*bb_F(lam_um,t,r)#
-##vega_spec = ascii.read('/home/idoi/Dropbox/Utils/alpha_lyr_stis_004.ascii')
-##solar_spec = ascii.read('/home/idoi/Dropbox/Utils/solar_spec.dat')#
-#f2p = Llam_reduced(lam_um,T,R,d =d)#
-#f2 = 1e-13*bb_F_reduced(lam_um,t,r)
-#plt.figure()
-#plt.plot(lam_um,f1,label = 'solar BB')
-#plt.plot(lam_um,f2p,'k',label = 'solar LT formula BB')
-#plt.plot(lam_um,f2,'r--',label = 'solar LT formula BB')
-#
-##plt.plot(solar_spec['col1']/1000,solar_spec['col2']*100,'b--',label = 'solar spectrum')#
-#plt.xscale('log')
-#plt.yscale('log')
-#plt.legend(fontsize = 14)
-#plt.xlabel('$\lambda\ [\mu m]$',fontsize = 14)
-#plt.ylabel('$f_{\lambda}\ [{erg\ cm^{-2}\ s^{-1}\ \AA^{-1}}]$',fontsize = 14)#
-#plt.show(block = False)#
-
-
 
 def apply_extinction(lam,flam,EBV=0,EBV_mw=0, R_v=3.1,z=0,LAW=LAW):
 	if EBV>0:
-		#elif LAW == 'SMC':
-		#	ex = SMC_Gordon03(lam*(1+z))
-		#	ex.set_EBmV(EBV)
-		#	A_v = ex.Av
-		#	Alam  = A_v*ex.AlamAv 
-		#	flux = flam*10**(-0.4*Alam)
-		#elif LAW == 'LMC':
-		#	ex = LMC_Gordon03(lam*(1+z))
-		#	ex.set_EBmV(EBV)
-		#	A_v = ex.Av
-		#	Alam  = A_v*ex.AlamAv 
-		#	flux = flam*10**(-0.4*Alam)
 		if LAW == 'Cal00':
 			A_v=R_v*EBV
 			flux=apply(calzetti00(lam, A_v, R_v,unit='aa'), flam)
@@ -560,12 +370,6 @@ def convert_bb(T,L):
 	R15 = np.sqrt(L15/(4*np.pi*sigma_sb*(T15)**4))
 	return T30,L30,R30,T15,L15,R15
 
-#for filt in sys_shift.keys():
-#	cond = data['filter']==filter 
-#	data['flux'][cond]= data[cond]['flux']*(1 + sys_shift[filt])
-
-#data=data[data['piv_wl']<4300]
-
 if modify_BB_MSW:
 	bb_func = bb_F_reduced
 elif not modify_BB_MSW:
@@ -643,13 +447,7 @@ for i,filter in enumerate(filters):
 	   piv_dict[filter]=np.mean(piv_table['piv_wl'][piv_table['filter']==filter])
 	   piv_wl[i]=piv_dict[filter] 
 piv_dict2 = {np.round(piv_dict[key],3):key for key in piv_dict.keys()}                
-#
-#piv_wl=np.array([6174.31385020061,4701.884477199233,7489.168218070939,8909.394468671806,3555.672974130721,
-#        6421.166992940606,4789.313527877863,7954.929623600654,
-#        3467.0320116445123,5425.378043562354,4349.641314341636,
-#        2246.179150541018,2055.1544609708008, 2580.3910534803363])
-#
-#
+
 
 
 
@@ -836,35 +634,7 @@ if fit_extinction:
 		ax.tick_params(direction='inout',which='both', length=4, width=1.8)
 	ax.xaxis.grid(True, which='minor')
 	ax.yaxis.grid(True, which='minor')
-	#plt.show(block=False)
 
-
-	#fig = plt.figure(figsize=(7,8))
-	#ax = fig.add_subplot(111)
-	#plt.contourf(Rvv,10**(log_Ebvv),prob_grid.transpose(),levels  = thresh)
-	#plt.colorbar(orientation='vertical')#
-	#plt.contour(Rvv,10**(log_Ebvv),prob_grid.transpose(),levels  = [thresh_2sig,thresh_1sig,1],colors = ['k','k','k'],linewidths = [1.5,1.5,1.5],linestyles = 'dashed')#
-	##sns.kdeplot(Rvv,10**(log_Ebvv),weights=prob_grid.transpose(),cmap='Blues', shade=True, shade_lowest=False)#
-	#ax.set_title(r'$P(M|D)$',fontsize = 16)
-	#ax.set_ylabel(r'$E(B-V)$',fontsize = 16)
-	#ylims = ax.get_ylim()
-	#xlims = ax.get_xlim()#
-	#plt.setp(ax.get_xticklabels(), fontsize=14)
-	#plt.setp(ax.get_yticklabels(), fontsize=14)#
-	#plt.yscale('log')#
-	#if LAW == 'LMC':
-	#    plt.plot(Rv,EBVec[idx[1]]*np.ones_like(Rv),ls ='--',markersize=10,color='#AD0A0A')
-	#    plt.plot(3.41,EBVec[idx[1]],'*',markersize=10,color='r')#
-	#    plt.xticks([3.41])    
-	#elif LAW=='SMC'
-	#    plt.plot(Rv,EBVec[idx[1]]*np.ones_like(Rv),ls ='--',markersize=10,color='#AD0A0A')
-	#    plt.plot(2.74,EBVec[idx[1]],'*',markersize=10,color='r')#
-	#    plt.xticks([2.74])
-	#else:     
-	#    plt.plot(Rv[idx[0]],EBVec[idx[1]],'*',markersize=10,color='r')#
-	#    ax.set_xlabel(r'$R_{v}$',fontsize = 16)
-	#    ax.tick_params(direction='inout',which='both', length=4, width=1.8)#
-	#plt.show(block=False)
 else:
 	Rv_fit=3.1
 	EBV_fit=EBV_host
@@ -1021,10 +791,6 @@ def get_pseudo_bol(time,data_full,T_bb,T_bb_e,L_bb,L_bb_e,z=0,plot = False):
 		plt.errorbar(time/(1+z),L_bb,yerr = L_bb_e, capsize = 0, ls = '',color='r',marker = 'o',label='Blackbody luminosity')
 		plt.errorbar(time/(1+z),L_bol,yerr = L_bol_err, capsize = 0, ls = '',color='b',marker = '*',label='SED trapezoidal integration')
 		plt.errorbar(time/(1+z),L_bol_corr,yerr = L_bol_corr_err, capsize = 0, ls = '',color='g',marker = '*',label=r'Trapezoidal integration + IR/UV correction (from $L_{bb}$)',alpha = 0.5)
-		#plt.errorbar(time/(1+z),L_bol_corr_2,yerr = L_bol_err, capsize = 0, ls = '',color='g',marker = '*',label='trapezoidal integration + IR/UV correction (from trapz-optical)')
-
-		#plt.errorbar(time/(1+z),L_bb*numlum,yerr = L_bol_err, capsize = 0, ls = '',color='k',marker = '*',label='numlum')
-		#plt.errorbar(time/(1+z),L_bol/numlum,yerr = L_bol_err, capsize = 0, ls = '',color='m',marker = '*',label='numlum2')
 		plt.xscale('log')
 		plt.yscale('log')
 		plt.xlabel('Rest frame time [days]')
