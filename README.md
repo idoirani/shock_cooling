@@ -1,26 +1,19 @@
-# SCONe - Shock Cooling Optimization for superNovae
+# SNeSCOPE - SuperNovae Shock Cooling Observations Parameter Estimator
 ## Documentation
-SCONe is a python package for modeling supernova light curves using the analytic models of Morag Sapir and Waxman (2022). 
+SNeSCOPE is a python package for modeling supernova light curves using the analytic models of Morag et al 2023 and Morag et al 2024. 
 
 ## Installation
 
 
 
-install package with 
-pip install SCONe
-
-or 
-
-git clone and then 
+to install, git clone and then 
 python setup.py intsall
 
-if you want to use the pre-existing script, able to run from the command line, add to your .bashrc file (no spaces):
+To run pre exsiting script, modify the parameter files (e.g., see in tests). You will modify paths, SN parameters (e.g., distance, redshift, extinction), package options, and the photometric filters used while observing (an extensive folder is added, but you can always add more. Make sure to update the plotting parameters accordingly). 
 
-alias fit_bb_extinction='python  /path/to/scipts/fit_bb_extinction.py'
-alias fit_SC='python  /path/to/scipts/fit_SC.py'
+Then run the script, e.g. 
 
-and then run from the command line
-source .bashrc
+python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
 
 
 ### Package contents
