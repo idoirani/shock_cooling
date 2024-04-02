@@ -7,17 +7,34 @@ SNeSCOPE is a python package for modeling supernova light curves using the analy
 
 
 to install, git clone the repository. Then run 
-#python setup.py intsall
-
+``` 
+python setup.py intsall
+``` 
 To run pre exsiting script, modify the parameter files (e.g., see in tests). You will modify paths, SN parameters (e.g., distance, redshift, extinction), package options, and the photometric filters used while observing (an extensive folder is added, but you can always add more. Make sure to update the plotting parameters accordingly). 
 
 Then run the script, e.g. 
+``` 
+python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
+``` 
 
-#python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
+As the script is currently written, it requires a data file containing magnituds,  fluxes, instruments and filters as is shown in the example test files. The script uses a non-rectangular prior on the recombination time of Hydrogen at a photospheric temperature of roughly t_rec 0.7 eV~ 8000K. Given the typical deviations from blackbody and given a mild amount of host extinction (up to E(B-V) = 0.2), a blackboyd fit assuming E(B-V) = 0 mag at 8000K can give anywhere between 5000 and 10000 K.   I recommend to first fix the extinction to lower than 0.2, using the color curves of Irani 2024. Then add a dates files. This is a list of times (JD) where E(B-V) = 0 blackbody fits are made, and then used as priors. 
 
+The script will run the fitter in the following steps: 
+- blackbody fits
+- prepare covariance matrix for likelihood function using the light curve sampling provided
+- fit the data
+- get the results. re-fit a blackbody using the fit host-extinciton
+- save the results as a pickle object
+- plot
+- calculate physical parameters and save to a table (for a full description of these parameters, see Irani 2024, and Morag 2024, and references therein).
 
-### Package contents
- 
+  
+
+There are 4 plots which are provided. 
+1) Light curve fits. These include a vertical line indicating the early validity time of the model (the time the breakout pulse is over and homologous expansion is reached). I also provide these plots with a logarithmic axis, which are more convenient for high cadence sampling of the early light curves.
+2) Blackbody fits compared to the model predictions. These are compared to the new blackbody fits, using the fit E(B-V) (and Rv, if fitted). A good fit should also fit the blackbody temperature and radius reasonable well, although some deviations are expected as the SED is not a perfect blackbody. 
+3) corner plots
+4) SED plot - These can be used to evaluate the observed and model SED at various epochs. The different lines are both the blackbody and the frequency dependent formulas smapled from the posterior. Keep in mind sometimes, due to a low mass envelope or fast V*, the model can be no longer valid at the lowest temperature plotted in these plots. 
 
 
 ### Python version
