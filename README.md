@@ -6,14 +6,14 @@ SNeSCOPE is a python package for modeling supernova light curves using the analy
 
 
 
-to install, git clone and then 
-python setup.py intsall
+to install, git clone the repository. Then run 
+#python setup.py intsall
 
 To run pre exsiting script, modify the parameter files (e.g., see in tests). You will modify paths, SN parameters (e.g., distance, redshift, extinction), package options, and the photometric filters used while observing (an extensive folder is added, but you can always add more. Make sure to update the plotting parameters accordingly). 
 
 Then run the script, e.g. 
 
-python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
+#python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
 
 
 ### Package contents
