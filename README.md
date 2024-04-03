@@ -64,8 +64,8 @@ deviations from blackbody: Morag et al 2024, "Shock cooling emission from explos
 variable validity domain: Soumagnac et al 2020 "SN 2018fif: The Explosion of a Large Red Supergiant Discovered in Its Infancy by the Zwicky Transient Facility"
 If using Piro 2021 "Shock Cooling Emission from Extended Material Revisited"
 
+<a href="https://doi.org/10.5281/zenodo.8364121"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10909915.svg" alt="DOI"></a>
 
-10.5281/zenodo.10909915
 
 
 
