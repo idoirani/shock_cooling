@@ -65,6 +65,7 @@ variable validity domain: Soumagnac et al 2020 "SN 2018fif: The Explosion of a L
 If using Piro 2021 "Shock Cooling Emission from Extended Material Revisited"
 
 
+10.5281/zenodo.10909915
 
 
 
