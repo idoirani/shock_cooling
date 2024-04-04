@@ -50,9 +50,9 @@ There are 4 plots which are provided.
 * 'astropy'
 * 'os'
 
+## Support
 
-## Credit
-
+I'm happy to provide support in setting up the package and interpreting its results. You can contact me at idoirani@gmail.com.
 
 ## Credit
 
