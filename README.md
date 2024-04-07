@@ -51,11 +51,11 @@ There are 4 plots which are provided.
 * `dynesty`
 * `matplotlib`
 * `scipy`
-* 'astropy'
-* 'numba'
-* 'astropy'
-* 'os'
-* 'pandas'
+* 'astropy`
+* 'numba`
+* 'astropy`
+* 'os`
+* 'pandas`
 
 ## Support
 
