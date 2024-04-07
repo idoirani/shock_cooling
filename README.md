@@ -9,7 +9,14 @@ SNeSCOPE is a python package for modeling supernova light curves using the analy
 to install, git clone the repository. Then run from within the SNeSCOPE directory (where the script setup.py is) 
 ``` 
 python setup.py install
-``` 
+```
+
+### add simulation data files
+Use the following link to download the MG simulatiosn used for constructing the covariance matrix for the likelihood function: 
+https://www.dropbox.com/scl/fi/kawt98t2lri5j90o61u60/RSG_batch_R03_20_removed_lines_Z1.mat?rlkey=1hnpbgiayol7jtu4cn4895slg&dl=0
+
+If this link does not work for any reason, the files can be found in the zenodo repository linked in the bottom of this readme
+
 To run pre exsiting script, modify the parameter files (e.g., see in tests). You will modify paths, SN parameters (e.g., distance, redshift, extinction), package options, and the photometric filters used while observing (an extensive folder is added, but you can always add more. Make sure to update the plotting parameters accordingly). 
 
 If you encounter errors at this point, make sure you have the correct paths and consider moving from relative to absolute paths. 
