@@ -17,7 +17,9 @@ If you encounter errors at this point, make sure you have the correct paths and 
 Then run the script fit_SC.py, e.g., from the SNeSCOPE directory:
 ``` 
 python .\scripts\fit_SC.py --path_params .\tests\params_2020jfo.py
-``` 
+```
+or 
+
 
 As the script is currently written, it requires a data file containing magnituds,  fluxes, instruments and filters as is shown in the example test files. The script uses a non-rectangular prior on the recombination time of Hydrogen at a photospheric temperature of roughly t_rec 0.7 eV~ 8000K. Given the typical deviations from blackbody and given a mild amount of host extinction (up to E(B-V) = 0.2), a blackboyd fit assuming E(B-V) = 0 mag at 8000K can give anywhere between 5000 and 10000 K.   I recommend to first fix the extinction to lower than 0.2, using the color curves of Irani 2024. Then add a dates files. This is a list of times (JD) where E(B-V) = 0 blackbody fits are made, and then used as priors. 
 
