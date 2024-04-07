@@ -4,3 +4,4 @@ dynesty
 scipy
 numba
 astropy
+pandas

@@ -3,22 +3,21 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
-# Get the long description from the README file
-#with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-#    long_description = f.read()
+description='SNeSCOPE is a python package for modeling supernova light curves using the analytic models of Morag et al 2023 and Morag et al 2024.',
+long_description=open('README.md').read(),
+long_description_content_type='text/markdown',
 
 setup(
     name='SNeSCOPE',
-    version='0.0.1',
-    description='development version',
-    #long_description=long_description,
-    #long_description_content_type='text/markdown',    
+    version='1.0.0',
+    description='Published version (April 2024)',  
     author='Ido Irani',
-    author_email='idoirani@gmail.com',  # Optional
-    keywords='astronomy',  # Optional
+    author_email='idoirani@gmail.com', 
+    url = 'https://github.com/idoirani/shock_cooling',
+    keywords='astronomy',  
     packages=["SNeSCOPE"],
     #packages=find_packages(),
-    install_requires=['numpy','matplotlib','dynesty','scipy','numba','astropy'],  
-    python_requires='>=3',
+    install_requires=['numpy','matplotlib','dynesty','scipy','numba','astropy','pandas'],  
+    python_requires='>=3.6',
 )
 
