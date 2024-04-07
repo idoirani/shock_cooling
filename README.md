@@ -80,6 +80,7 @@ There are 4 plots which are provided.
 I'm happy to provide support in setting up the package and interpreting its results. You can contact me at idoirani@gmail.com.
 
 ## Credit
+<a href="https://doi.org/10.5281/zenodo.10909915"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10909915.svg" alt="DOI"></a>
 
 If you are using SNeSCOPE, please cite the following papers: 
 
@@ -190,8 +191,16 @@ archivePrefix = {arXiv},
 
 ``` 
 
+In addition, consider citing the following papers: 
+Astropy collaboration 2013 <a href="https://doi.org/10.1051/0004-6361/201322068">
+Astropy collaboration 2018 <a href="https://doi.org/10.3847/1538-3881/aabc4f">
+Matpotlib (hunter et al 2007) <a href="https://doi.org/10.1109/MCSE.2007.55">
+Numpy (Oliphant et al 2006) <a href="https://doi.org/10.48550/arXiv.cs/0502072">
+Scipy (Virtanen et al 2020) <a href="https://doi.org/10.1038/s41592-019-0686-2">
+extinction (Barbary et al 2016) <a href="https://doi.org/10.5281/zenodo.804967">
+dynesty (Skilling et al 2004, Skilling et al 2006,Feroz et al 2009,Higson et al 2019,Speagle et al 2020) <a href="https://doi.org/10.1063/1.1835238,">,<a href="https://doi.org/10.1214/06-BA127">,<a href="https://doi.org/10.1111/j.1365-2966.2009.14548.x">,<a href="https://doi.org/10.1007/s11222-018-9844-0">,<a href="https://doi.org/10.1093/mnras/staa278">
 
-<a href="https://doi.org/10.5281/zenodo.10909915"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10909915.svg" alt="DOI"></a>
+
 
 
 
