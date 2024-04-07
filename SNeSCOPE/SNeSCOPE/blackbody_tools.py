@@ -14,6 +14,7 @@ from numba import jit, njit
 import dynesty
 from dynesty import plotting as dyplot
 from dynesty import utils as dyfunc
+import pandas as pd
 #from params import *
 plt.rcParams.update({
 	"text.usetex": True,
@@ -1601,9 +1602,8 @@ def construct_sim(data,mat, d = 3.0856e+19, t0_vec =[0] ):
 					Null_tab[filt]['instrument'] = instrum[filt]
 					Null_tab[filt] = Null_tab[filt]['t_rest','filter','piv_wl','AB_MAG','instrument']
 					Null_tab[filt] = Null_tab[filt].to_pandas()
-					tab = tab.append(Null_tab[filt])
-				Tab = Tab.append(tab)
-				#Tab = table.vstack([Tab,tab])
+					tab = pd.concat([tab,Null_tab[filt]])
+				Tab = pd.concat([Tab,tab])
 			Tab =  table.Table.from_pandas(Tab)
 			Tab.sort('t_rest')
 			Tab['absmag'] = Tab['AB_MAG']
