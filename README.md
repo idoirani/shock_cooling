@@ -22,7 +22,7 @@ To run pre exsiting script, modify the parameter files (e.g., see in tests). You
 
 If you encounter errors at this point, make sure you have the correct paths and consider moving from relative to absolute paths. 
 
-Then run the script fit_SC.py, e.g., from the SNeSCOPE directory:
+Then run the script fit_SC.py, e.g., from the SNeSCOPE directory (for a unix based system):
 ``` 
 python ./scripts/fit_SC.py --path_params ./tests/params_2020jfo.py
 ```
