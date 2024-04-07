@@ -55,6 +55,7 @@ There are 4 plots which are provided.
 * 'numba'
 * 'astropy'
 * 'os'
+* 'pandas'
 
 ## Support
 
