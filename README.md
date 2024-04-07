@@ -84,6 +84,26 @@ I'm happy to provide support in setting up the package and interpreting its resu
 If you are using SNeSCOPE, please cite the following papers: 
 
 light curve fitter: Irani et al 2024, "the early UV light curves of Type II SNe"
+```
+@ARTICLE{2023arXiv231016885I,
+       author = {{Irani}, Ido and {Morag}, Jonathan and {Gal-Yam}, Avishay and {Waxman}, Eli and {Schulze}, Steve and {Sollerman}, Jesper and {Hinds}, K-Ryan and {Perley}, Daniel A. and {Chen}, Ping and {Strotjohann}, Nora L. and {Yaron}, Ofer and {Zimmerman}, Erez A. and {Bruch}, Rachel and {Ofek}, Eran O. and {Soumagnac}, Maayane T. and {Yang}, Yi and {Groom}, Steven L. and {Masci}, Frank J. and {Riddle}, Reed and {Bellm}, Eric C. and {Hale}, David},
+        title = "{The Early Ultraviolet Light-Curves of Type II Supernovae and the Radii of Their Progenitor Stars}",
+      journal = {arXiv e-prints},
+     keywords = {Astrophysics - High Energy Astrophysical Phenomena},
+         year = 2023,
+        month = oct,
+          eid = {arXiv:2310.16885},
+        pages = {arXiv:2310.16885},
+          doi = {10.48550/arXiv.2310.16885},
+archivePrefix = {arXiv},
+       eprint = {2310.16885},
+ primaryClass = {astro-ph.HE},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2023arXiv231016885I},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+``` 
+
+
 analytic model for T,L evolution: Morag et al 2023 "Shock cooling emission from explosions of red super-giants: I. A numerically calibrated analytic model"
 ``` 
 @ARTICLE{2023MNRAS.522.2764M,
