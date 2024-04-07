@@ -85,7 +85,7 @@ If you are using SNeSCOPE, please cite the following papers:
 
 light curve fitter: Irani et al 2024, "the early UV light curves of Type II SNe"
 analytic model for T,L evolution: Morag et al 2023 "Shock cooling emission from explosions of red super-giants: I. A numerically calibrated analytic model"
-'''
+``` 
 @ARTICLE{2023MNRAS.522.2764M,
        author = {{Morag}, Jonathan and {Sapir}, Nir and {Waxman}, Eli},
         title = "{Shock cooling emission from explosions of red supergiants - I. A numerically calibrated analytic model}",
@@ -103,9 +103,9 @@ archivePrefix = {arXiv},
        adsurl = {https://ui.adsabs.harvard.edu/abs/2023MNRAS.522.2764M},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
-'''
+``` 
 deviations from blackbody: Morag et al 2024, "Shock cooling emission from explosions of red super-giants: II. An analytic model of deviations from blackbody emission"
-'''
+``` 
 @ARTICLE{2024MNRAS.528.7137M,
        author = {{Morag}, Jonathan and {Irani}, Ido and {Sapir}, Nir and {Waxman}, Eli},
         title = "{Shock cooling emission from explosions of red supergiants: II. An analytic model of deviations from blackbody emission}",
@@ -123,10 +123,10 @@ archivePrefix = {arXiv},
        adsurl = {https://ui.adsabs.harvard.edu/abs/2024MNRAS.528.7137M},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
-'''
+``` 
 
 Variable validity domain: Soumagnac et al 2020 "SN 2018fif: The Explosion of a Large Red Supergiant Discovered in Its Infancy by the Zwicky Transient Facility"
-'''
+``` 
 @ARTICLE{2020ApJ...902....6S,
        author = {{Soumagnac}, Maayane T. and {Ganot}, Noam and {Irani}, Ido and {Gal-yam}, Avishay and {Ofek}, Eran O. and {Waxman}, Eli and {Morag}, Jonathan and {Yaron}, Ofer and {Schulze}, Steve and {Yang}, Yi and {Rubin}, Adam and {Cenko}, S. Bradley and {Sollerman}, Jesper and {Perley}, Daniel A. and {Fremling}, Christoffer and {Nugent}, Peter and {Neill}, James D. and {Karamehmetoglu}, Emir and {Bellm}, Eric C. and {Bruch}, Rachel J. and {Burruss}, Rick and {Cunningham}, Virginia and {Dekany}, Richard and {Golkhou}, V. Zach and {Graham}, Matthew J. and {Kasliwal}, Mansi M. and {Konidaris}, Nicholas P. and {Kulkarni}, Shrinivas R. and {Kupfer}, Thomas and {Laher}, Russ R. and {Masci}, Frank J. and {Riddle}, Reed and {Rigault}, Mickael and {Rusholme}, Ben and {van Roestel}, Jan and {Zackay}, Barak},
         title = "{SN 2018fif: The Explosion of a Large Red Supergiant Discovered in Its Infancy by the Zwicky Transient Facility}",
@@ -145,10 +145,10 @@ archivePrefix = {arXiv},
        adsurl = {https://ui.adsabs.harvard.edu/abs/2020ApJ...902....6S},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
-'''
+``` 
 
 If using Piro 2021 "Shock Cooling Emission from Extended Material Revisited"
-'''
+``` 
 @ARTICLE{2021ApJ...909..209P,
        author = {{Piro}, Anthony L. and {Haynie}, Annastasia and {Yao}, Yuhan},
         title = "{Shock Cooling Emission from Extended Material Revisited}",
@@ -168,7 +168,7 @@ archivePrefix = {arXiv},
       adsnote = {Provided by the SAO/NASA Astrophysics Data System}
 }
 
-'''
+``` 
 
 
 <a href="https://doi.org/10.5281/zenodo.10909915"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10909915.svg" alt="DOI"></a>
