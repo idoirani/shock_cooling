@@ -24,7 +24,7 @@ and for the keys:
 https://www.dropbox.com/scl/fi/o22vj00kjskp9gk6ae2h1/RSG_batch_R03_20_removed_lines_Z1_key.mat?rlkey=kop5iq609h10pgkgsnycuvjyx&dl=0
 If these links do not work for any reason, the files can be found in the zenodo repository linked in the bottom of this readme
 
-In addition to these, the filter transmission data I use is collected in the Filters folder avilable in this repository, in the zenodo repository, and in the following link: 
+In addition to these, the filter transmission data I use is collected in the Filters folder avilable in this repository and in the zenodo repository.
 
 
 ## running the script
