@@ -133,11 +133,11 @@ if rec_limits:
 	T_up = np.max(bb_fits['T'])
 	T_down = np.min(bb_fits['T'])
 	if T_up>T_rec_high:
-		t_low = bb_fits[bb_fits['T']>14500]['t_rest'][-1]
+		t_low = bb_fits[bb_fits['T']>T_rec_high]['t_rest'][-1]
 	else:
 		t_low = -np.inf
 	if T_down<T_rec_low:
-		t_high = bb_fits[bb_fits['T']<7300]['t_rest'][0]
+		t_high = bb_fits[bb_fits['T']<T_rec_low]['t_rest'][0]
 	else:
 		t_high = np.inf
 
