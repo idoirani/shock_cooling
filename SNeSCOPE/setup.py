@@ -17,7 +17,7 @@ setup(
     keywords='astronomy',  
     packages=["SNeSCOPE"],
     #packages=find_packages(),
-    install_requires=['numpy','matplotlib','dynesty','scipy','numba','astropy','pandas'],  
+    install_requires=['numpy','matplotlib','dynesty','scipy','numba','astropy','pandas','tqdm','ipdb','extinction','os','sys'],  
     python_requires='>=3.6',
 )
 
