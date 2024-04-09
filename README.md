@@ -24,7 +24,11 @@ and for the keys:
 https://www.dropbox.com/scl/fi/o22vj00kjskp9gk6ae2h1/RSG_batch_R03_20_removed_lines_Z1_key.mat?rlkey=kop5iq609h10pgkgsnycuvjyx&dl=0
 If these links do not work for any reason, the files can be found in the zenodo repository linked in the bottom of this readme
 
+Place both files in the /data/ folder, or link to a different path using the test/params files. Alternativly, set the "covar" parameter to False in the test/params file. This will result in using a diagonal covariance matrix using only the data error bars and the user provided systematic error. 
+
+
 In addition to these, the filter transmission data I use is collected in the Filters folder avilable in this repository and in the zenodo repository.
+
 
 
 ## running the script
