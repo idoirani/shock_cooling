@@ -37,7 +37,7 @@ sn = 'SN2013fs'  #name of the SN
 ebv_host_init = 0  # initial guess for host extinction
 results = {} #dictionary to store results
 import pickle
-covar = True #if True, use non-diagonal covariance matrix
+covar = False #if True, use non-diagonal covariance matrix
 corner_plot = True #if True, plot corner plot
 lc_plot = True #if True, plot light curve
 bb_plot = True  
@@ -69,8 +69,7 @@ piv_wl_col  = 'piv_wl' #column name for pivot wavelength
 inst_col    = 'instrument' #column name for instrument
 
 #model and fit functions
-FD = True #if True, use frequency dependent model and fit functions. If False, use frequency independent model and fit functions. Frequency dependent formula is only tested for Red Supergiant stars (Morag 2024)
-model_func = model_freq_dep_SC  # model_freq_dep_SC == Morag et al 2024.    
+FD = False #if True, use frequency dependent model and fit functions. If False, use frequency independent model and fit functions. Frequency dependent formula is only tested for Red Supergiant stars (Morag 2024)
 
 
 

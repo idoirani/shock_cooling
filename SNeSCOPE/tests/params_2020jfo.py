@@ -70,7 +70,6 @@ inst_col    = 'instrument' #column name for instrument
 
 #model and fit functions
 FD = True #if True, use frequency dependent model and fit functions. If False, use frequency independent model and fit functions. Frequency dependent formula is only tested for Red Supergiant stars (Morag 2024)
-model_func = model_freq_dep_SC  # model_freq_dep_SC == Morag et al 2024.    
 
 
 

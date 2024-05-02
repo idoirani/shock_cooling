@@ -8,5 +8,3 @@ pandas
 tqdm
 ipdb
 extinction
-os
-sys

@@ -1470,7 +1470,7 @@ def generate_full_covariance(data,path_mat,path_key,dic_transmission,sys_err = 0
 		cov_est = A+cov_obs
 		inv_cov = np.linalg.inv(cov_est)
 	else: 
-		cov_obs = np.diagflat(np.array(data[data['t_rest']<=t_max]['AB_MAG_ERR'])**2+ sys_err**2)   
+		cov_obs = np.diagflat(np.array(data['AB_MAG_ERR'])**2+ sys_err**2)   
 		cov_est = cov_obs  
 		inv_cov = np.linalg.inv(cov_obs)
 	return inv_cov,cov_est

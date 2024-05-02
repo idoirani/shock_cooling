@@ -9,7 +9,7 @@ long_description_content_type='text/markdown',
 
 setup(
     name='SNeSCOPE',
-    version='1.0.0',
+    version='1.0.3',
     description='Published version (April 2024)',  
     author='Ido Irani',
     author_email='idoirani@gmail.com', 
@@ -17,7 +17,7 @@ setup(
     keywords='astronomy',  
     packages=["SNeSCOPE"],
     #packages=find_packages(),
-    install_requires=['numpy','matplotlib','dynesty','scipy','numba','astropy','pandas','tqdm','ipdb','extinction','os','sys'],  
+    install_requires=['numpy','matplotlib','dynesty','scipy','numba','astropy','pandas','tqdm','ipdb','extinction'],  
     python_requires='>=3.6',
 )
 

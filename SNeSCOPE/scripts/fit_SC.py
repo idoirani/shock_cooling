@@ -166,7 +166,7 @@ def write_action(sn,data,cond,priors,rec_time_lims,t0_vec,d_mpc,z,t0_init,t_firs
 	if FD:
 		mean, quantiles,dresults = fit_freq_dep_SC(data[cond],filter_transmission_fast,inv_cov = inv_cov,k34 = k34,Rv=Rv,sys_err =sys_err, LAW = LAW,plot_corner=False,priors =priors,prior_type = prior_type,rec_time_lims = rec_time_lims,t_tr_min = t_tr_prior, reduced = reduced,time_weighted = time_weighted)
 	else:
-		mean, quantiles,dresults = fit_SC(data[cond],filter_transmission = filter_transmission_fast,k34 = k34,Rv=Rv,sys_err =sys_err, LAW = LAW,plot_corner=False,priors =priors)
+		mean, quantiles,dresults = fit_SC(data[cond],dic_transmission = filter_transmission_fast,k34 = k34,Rv=Rv,sys_err =sys_err, LAW = LAW,plot_corner=False,priors =priors)
 	try:
 		
 		samples = dresults.samples  # samples
